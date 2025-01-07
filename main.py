@@ -1,6 +1,7 @@
 from db_connection import DatabaseConnection
 from data_manager import DataManager
-from menu import MainMenu
+#from menu import MainMenu
+from gui import App
 
 # Configuración de la conexión
 db = DatabaseConnection(
@@ -14,7 +15,10 @@ db = DatabaseConnection(
 try:
     db.connect()
     data_manager = DataManager(db)
-    menu = MainMenu(data_manager)
-    menu.show_menu()
+    #menu = MainMenu(data_manager)
+    #menu.show_menu()
+    app = App(data_manager)
+    app.mainloop()
 finally:
     db.close()
+

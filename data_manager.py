@@ -113,25 +113,44 @@ class DataManager:
 
     def insert_historico_movimientos(self, codigo_naval, id_centro_anterior, id_centro_nuevo, fecha_instalacion_centro, fecha_termino_centro):
         try:
+            # Insertar en la tabla Historico_Movimientos
             self.connection.cur.execute("""
                 INSERT INTO Historico_Movimientos (Codigo_Naval, ID_CentroAnterior, ID_CentroNuevo, Fecha_Instalacion_Centro, Fecha_Termino_Centro)
                 VALUES (%s, %s, %s, %s, %s);
             """, (codigo_naval, id_centro_anterior, id_centro_nuevo, fecha_instalacion_centro, fecha_termino_centro))
+            
+            # Actualizar la tabla Ponton con la nueva ubicación
+            self.connection.cur.execute("""
+                UPDATE Ponton
+                SET Nombre_Centro = %s
+                WHERE Codigo_Naval = %s;
+            """, (id_centro_nuevo, codigo_naval))
+            
             self.connection.conn.commit()
-            print("Histórico de movimientos insertado correctamente")
+            print("Histórico de movimientos insertado y pontón actualizado correctamente")
         except Exception as e:
-            print(f"Error al insertar histórico de movimientos: {e}")
+            print(f"Error al insertar histórico de movimientos y actualizar pontón: {e}")
 
     def insert_historico_dispositivos(self, serial, id_codigo_naval_anterior, id_codigo_naval_nuevo, fecha_instalacion_dispositivo, fecha_termino_dispositivo):
         try:
+            # Insertar en la tabla Historico_Dispositivos
             self.connection.cur.execute("""
                 INSERT INTO Historico_Dispositivos (Serial, ID_Codigo_NavalAnterior, ID_Codigo_NavalNuevo, Fecha_Instalacion_Dispositivo, Fecha_Termino_Dispositivo)
                 VALUES (%s, %s, %s, %s, %s);
             """, (serial, id_codigo_naval_anterior, id_codigo_naval_nuevo, fecha_instalacion_dispositivo, fecha_termino_dispositivo))
+            
+            # Actualizar la tabla Dispositivos con la nueva ubicación
+            self.connection.cur.execute("""
+                UPDATE Dispositivos
+                SET ID_Codigo_Naval = %s
+                WHERE Serial = %s;
+            """, (id_codigo_naval_nuevo, serial))
+            
             self.connection.conn.commit()
-            print("Histórico de dispositivos insertado correctamente")
+            print("Histórico de dispositivos insertado y dispositivo actualizado correctamente")
         except Exception as e:
-            print(f"Error al insertar histórico de dispositivos: {e}")
+            print(f"Error al insertar histórico de dispositivos y actualizar dispositivo: {e}")
+
 
     def consultar_empresas(self):
         try:
@@ -228,3 +247,13 @@ class DataManager:
             return resultados
         except Exception as e:
             print(f"Error al consultar histórico de dispositivos: {e}")
+
+    def normalize_input(prompt, to_lower=False, to_bool=False):
+        value = input(prompt).strip()  # Elimina espacios extra
+        if to_lower:
+            value = value.lower()
+        if to_bool:
+            return value == "true"
+        return value
+
+

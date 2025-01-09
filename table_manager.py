@@ -1,9 +1,23 @@
-class TableManager: 
+class TableManager:
     def __init__(self, connection):
         self.connection = connection
 
     def create_tables(self):
         commands = [
+            # Eliminar tablas existentes para reiniciar desde cero
+            "DROP TABLE IF EXISTS Historico_Dispositivos CASCADE;",
+            "DROP TABLE IF EXISTS Historico_Movimientos CASCADE;",
+            "DROP TABLE IF EXISTS Camara CASCADE;",
+            "DROP TABLE IF EXISTS Asistente_Virtual CASCADE;",
+            "DROP TABLE IF EXISTS Radar CASCADE;",
+            "DROP TABLE IF EXISTS NIO CASCADE;",
+            "DROP TABLE IF EXISTS Ponton CASCADE;",
+            "DROP TABLE IF EXISTS Dispositivos CASCADE;",
+            "DROP TABLE IF EXISTS Credenciales CASCADE;",
+            "DROP TABLE IF EXISTS Ubicacion CASCADE;",
+            "DROP TABLE IF EXISTS Empresa CASCADE;",
+            
+            # Crear tablas
             """
             CREATE TABLE Empresa (
                 Nombre_Empresa VARCHAR PRIMARY KEY
@@ -12,8 +26,8 @@ class TableManager:
             """
             CREATE TABLE Ubicacion (
                 Nombre_Centro VARCHAR PRIMARY KEY,
-                Grupo_Telegram VARCHAR NOT NULL,
-                Nombre_Empresa VARCHAR,
+                Grupo_Telegram VARCHAR,
+                Nombre_Empresa VARCHAR NOT NULL,
                 CONSTRAINT FK_Nombre_Empresa FOREIGN KEY (Nombre_Empresa)
                 REFERENCES Empresa (Nombre_Empresa)
             );
@@ -43,8 +57,8 @@ class TableManager:
                 IA VARCHAR,
                 Serial_NIO VARCHAR,
                 Serial_Radar VARCHAR,
-                Serial_Asistente_Virtual VARCHAR,
-                Serial_Camara VARCHAR,
+                Serial_Asistente_Virtual VARCHAR NULL,
+                Serial_Camara VARCHAR NULL,
                 Observaciones TEXT,
                 CONSTRAINT FK_Nombre_Centro FOREIGN KEY (Nombre_Centro)
                 REFERENCES Ubicacion (Nombre_Centro),
@@ -53,9 +67,9 @@ class TableManager:
                 CONSTRAINT FK_Serial_Radar FOREIGN KEY (Serial_Radar)
                 REFERENCES Dispositivos (Serial),
                 CONSTRAINT FK_Serial_Asistente_Virtual FOREIGN KEY (Serial_Asistente_Virtual)
-                REFERENCES Dispositivos (Serial),
+                REFERENCES Dispositivos (Serial) ON DELETE SET NULL,
                 CONSTRAINT FK_Serial_Camara FOREIGN KEY (Serial_Camara)
-                REFERENCES Dispositivos (Serial)
+                REFERENCES Dispositivos (Serial) ON DELETE SET NULL
             );
             """,
             """
@@ -121,3 +135,43 @@ class TableManager:
             self.connection.conn.commit()
         except Exception as e:
             print(f"Error al crear tablas: {e}")
+
+
+    def alter_tables(self):
+        commands = [
+            "ALTER TABLE Ponton ALTER COLUMN Serial_Asistente_Virtual DROP NOT NULL;",
+            "ALTER TABLE Ponton ALTER COLUMN Serial_Camara DROP NOT NULL;",
+
+        ]
+
+        try:
+            for command in commands:
+                self.connection.cur.execute(command)
+                print("Tabla alterada correctamente")
+            self.connection.conn.commit()
+        except Exception as e:
+            print(f"Error al alterar tablas: {e}")
+
+    def drop_tables(self):
+        commands = [
+            # Eliminar tablas existentes para reiniciar desde cero
+            "DROP TABLE IF EXISTS Historico_Dispositivos CASCADE;",
+            "DROP TABLE IF EXISTS Historico_Movimientos CASCADE;",
+            "DROP TABLE IF EXISTS Camara CASCADE;",
+            "DROP TABLE IF EXISTS Asistente_Virtual CASCADE;",
+            "DROP TABLE IF EXISTS Radar CASCADE;",
+            "DROP TABLE IF EXISTS NIO CASCADE;",
+            "DROP TABLE IF EXISTS Ponton CASCADE;",
+            "DROP TABLE IF EXISTS Dispositivos CASCADE;",
+            "DROP TABLE IF EXISTS Credenciales CASCADE;",
+            "DROP TABLE IF EXISTS Ubicacion CASCADE;",
+            "DROP TABLE IF EXISTS Empresa CASCADE;",
+        ]
+
+        try:
+            for command in commands:
+                self.connection.cur.execute(command)
+                print("Tabla eliminada correctamente")
+            self.connection.conn.commit()
+        except Exception as e:
+            print(f"Error al eliminar tablas: {e}")

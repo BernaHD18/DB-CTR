@@ -160,10 +160,58 @@ class DataManager:
     def consultar_dispositivos(self):
         try:
             self.connection.cur.execute("SELECT * FROM Dispositivos;")
-            resultados = self.connection.cur.fetchall()
-            return resultados
+            dispositivos = self.connection.cur.fetchall()
+
+            if not dispositivos:
+                print("No se encontraron dispositivos en la base de datos.")
+                return []  # Devolver una lista vacía para evitar errores
+
+            # Identificar tipos de dispositivos
+            dispositivos_formateados = []
+            for dispositivo in dispositivos:
+                serial = dispositivo[0]
+                self.connection.cur.execute("SELECT * FROM NIO WHERE Serial = %s;", (serial,))
+                if self.connection.cur.fetchone():
+                    tipo = "NIO"
+                else:
+                    self.connection.cur.execute("SELECT * FROM Radar WHERE Serial = %s;", (serial,))
+                    if self.connection.cur.fetchone():
+                        tipo = "Radar"
+                    else:
+                        self.connection.cur.execute("SELECT * FROM Asistente_Virtual WHERE Serial = %s;", (serial,))
+                        if self.connection.cur.fetchone():
+                            tipo = "Asistente Virtual"
+                        else:
+                            self.connection.cur.execute("SELECT * FROM Camara WHERE Serial = %s;", (serial,))
+                            if self.connection.cur.fetchone():
+                                tipo = "Cámara"
+                            else:
+                                tipo = "Desconocido"
+
+                dispositivos_formateados.append({
+                    "Serial": serial,
+                    "Dirección IP": dispositivo[1],
+                    "Firmware": dispositivo[2],
+                    "ID Credenciales": dispositivo[3],
+                    "Tipo": tipo
+                })
+
+            # Mostrar en un formato amigable
+            print("Dispositivos registrados:")
+            print("{:<12} {:<30} {:<37} {:<20} {:<15}".format(
+                "Serial", "Dirección IP", "Firmware", "ID Credenciales", "Tipo"
+            ))
+            print("=" * 120)
+            for dispositivo in dispositivos_formateados:
+                print("{:<12} {:<30} {:<37} {:<20} {:<15}".format(
+                    dispositivo["Serial"], dispositivo["Dirección IP"], dispositivo["Firmware"],
+                    dispositivo["ID Credenciales"], dispositivo["Tipo"]
+                ))
+
+            return dispositivos_formateados  # Retornar los datos formateados
         except Exception as e:
             print(f"Error al consultar dispositivos: {e}")
+            return []  # Retornar una lista vacía en caso de error
 
     def consultar_historico_movimientos(self):
         try:

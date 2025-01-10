@@ -18,7 +18,7 @@ try:
     # Creación de tablas
     table_manager = TableManager(db)
     #table_manager.drop_tables()
-    #table_manager.create_tables()1
+    #table_manager.create_tables()
     #table_manager.alter_tables()
 
     # Inicialización de la aplicación

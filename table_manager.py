@@ -11,6 +11,7 @@ class TableManager:
             "DROP TABLE IF EXISTS Asistente_Virtual CASCADE;",
             "DROP TABLE IF EXISTS Radar CASCADE;",
             "DROP TABLE IF EXISTS NIO CASCADE;",
+            "DROP TABLE IF EXISTS Ponton_Dispositivos CASCADE;",
             "DROP TABLE IF EXISTS Ponton CASCADE;",
             "DROP TABLE IF EXISTS Dispositivos CASCADE;",
             "DROP TABLE IF EXISTS Credenciales CASCADE;",
@@ -55,21 +56,19 @@ class TableManager:
                 Nombre_Centro VARCHAR,
                 Estado BOOLEAN NOT NULL,
                 IA VARCHAR,
-                Serial_NIO VARCHAR,
-                Serial_Radar VARCHAR,
-                Serial_Asistente_Virtual VARCHAR NULL,
-                Serial_Camara VARCHAR NULL,
                 Observaciones TEXT,
                 CONSTRAINT FK_Nombre_Centro FOREIGN KEY (Nombre_Centro)
-                REFERENCES Ubicacion (Nombre_Centro),
-                CONSTRAINT FK_Serial_NIO FOREIGN KEY (Serial_NIO)
-                REFERENCES Dispositivos (Serial),
-                CONSTRAINT FK_Serial_Radar FOREIGN KEY (Serial_Radar)
-                REFERENCES Dispositivos (Serial),
-                CONSTRAINT FK_Serial_Asistente_Virtual FOREIGN KEY (Serial_Asistente_Virtual)
-                REFERENCES Dispositivos (Serial) ON DELETE SET NULL,
-                CONSTRAINT FK_Serial_Camara FOREIGN KEY (Serial_Camara)
-                REFERENCES Dispositivos (Serial) ON DELETE SET NULL
+                REFERENCES Ubicacion (Nombre_Centro)
+            );
+            """,
+            """
+            CREATE TABLE Ponton_Dispositivos (
+                id SERIAL PRIMARY KEY,
+                codigo_naval VARCHAR(50) NOT NULL,
+                serial_dispositivo VARCHAR(50) NOT NULL,
+                tipo_dispositivo VARCHAR(50) NOT NULL,
+                FOREIGN KEY (codigo_naval) REFERENCES Ponton(Codigo_Naval),
+                FOREIGN KEY (serial_dispositivo) REFERENCES Dispositivos(Serial)
             );
             """,
             """
@@ -135,6 +134,8 @@ class TableManager:
             self.connection.conn.commit()
         except Exception as e:
             print(f"Error al crear tablas: {e}")
+
+    # ...existing code...
 
 
     def alter_tables(self):

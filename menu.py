@@ -30,10 +30,8 @@ class MainMenu:
             print("1. Insertar Empresa")
             print("2. Insertar Ubicación")
             print("3. Insertar Pontón")
-            print("4. Insertar Dispositivo NIO")
-            print("5. Insertar Dispositivo Radar")
-            print("6. Insertar Asistente Virtual")
-            print("7. Insertar Cámara")
+            print("4. Insertar Dispositivo")
+            print("5. Insertar Dispositivo en Pontón")
             print("0. Volver al Menú Principal\n")
 
             opcion = input("Seleccione una opción: ")
@@ -48,47 +46,37 @@ class MainMenu:
                 nombre_empresa = input("Ingrese el nombre de la empresa asociada: ")
                 self.data_manager.insert_ubicacion(nombre_centro, grupo_telegram, nombre_empresa)
             elif opcion == "3":
-                print("Recuerda que para ingresar un pontón debes haber ingresado una ubicación y sus respectivos dispositivos previamente.")
+                print("Recuerda que para ingresar un pontón debes haber ingresado una ubicación previamente.")
                 codigo_naval = input("Ingrese el código naval: ")
                 nombre_centro = input("Ingrese el nombre del centro: ")
                 estado = input("Ingrese el estado (True/False): ").strip().lower() == "true"
                 ia = input("Ingrese IA: ")
-                serial_nio = input("Ingrese el serial del NIO: ")
-                serial_radar = input("Ingrese el serial del Radar: ")
-                serial_asistente_virtual = input("Ingrese el serial del Asistente Virtual: ")
-                serial_camara = input("Ingrese el serial de la Cámara: ")
                 observaciones = input("Ingrese observaciones: ")
-                self.data_manager.insert_ponton(codigo_naval, nombre_centro, estado, ia, serial_nio, serial_radar, serial_asistente_virtual, serial_camara, observaciones)
+                self.data_manager.insert_ponton(codigo_naval, nombre_centro, estado, ia, observaciones)
             elif opcion == "4":
-                serial = input("Ingrese el serial del NIO: ")
-                modelo = input("Ingrese el modelo: ")
-                direccionamiento_ip = input("Ingrese el direccionamiento IP: ")
-                firmware_version = input("Ingrese la versión de firmware: ")
+                serial = input("Ingrese el serial del dispositivo: ")
+                direccionamiento_ip = input("Ingrese la dirección IP del dispositivo: ")
+                firmware_version = input("Ingrese la versión del firmware: ")
                 usuario = input("Ingrese el usuario: ")
                 contrasena = input("Ingrese la contraseña: ")
-                self.data_manager.insert_nio(serial, modelo, direccionamiento_ip, firmware_version, usuario, contrasena)
+                tipo_dispositivo = input("Ingrese el tipo de dispositivo (NIO, Radar, Asistente Virtual, Cámara): ")
+                if tipo_dispositivo.lower() == "nio":
+                    modelo = input("Ingrese el modelo del NIO (NIO-DIN o NIO-App): ")
+                    self.data_manager.insert_nio(serial, modelo, direccionamiento_ip, firmware_version, usuario, contrasena)
+                elif tipo_dispositivo.lower() == "radar":
+                    canal_rf = input("Ingrese el canal RF del radar: ")
+                    self.data_manager.insert_radar(serial, canal_rf, direccionamiento_ip, firmware_version, usuario, contrasena)
+                elif tipo_dispositivo.lower() == "asistente virtual":
+                    self.data_manager.insert_asistente_virtual(serial, direccionamiento_ip, firmware_version, usuario, contrasena)
+                elif tipo_dispositivo.lower() == "cámara":
+                    self.data_manager.insert_camara(serial, direccionamiento_ip, firmware_version, usuario, contrasena)
+                else:
+                    print("Tipo de dispositivo no válido.")
             elif opcion == "5":
-                serial = input("Ingrese el serial del Radar: ")
-                canal_rf = input("Ingrese el canal RF: ")
-                direccionamiento_ip = input("Ingrese el direccionamiento IP: ")
-                firmware_version = input("Ingrese la versión de firmware: ")
-                usuario = input("Ingrese el usuario: ")
-                contrasena = input("Ingrese la contraseña: ")
-                self.data_manager.insert_radar(serial, canal_rf, direccionamiento_ip, firmware_version, usuario, contrasena)
-            elif opcion == "6":
-                serial = input("Ingrese el serial del Asistente Virtual: ")
-                direccionamiento_ip = input("Ingrese el direccionamiento IP: ")
-                firmware_version = input("Ingrese la versión de firmware: ")
-                usuario = input("Ingrese el usuario: ")
-                contrasena = input("Ingrese la contraseña: ")
-                self.data_manager.insert_asistente_virtual(serial, direccionamiento_ip, firmware_version, usuario, contrasena)
-            elif opcion == "7":
-                serial = input("Ingrese el serial de la Cámara: ")
-                direccionamiento_ip = input("Ingrese el direccionamiento IP: ")
-                firmware_version = input("Ingrese la versión de firmware: ")
-                usuario = input("Ingrese el usuario: ")
-                contrasena = input("Ingrese la contraseña: ")
-                self.data_manager.insert_camara(serial, direccionamiento_ip, firmware_version, usuario, contrasena)
+                codigo_naval = input("Ingrese el código naval del pontón: ")
+                serial_dispositivo = input("Ingrese el serial del dispositivo: ")
+                tipo_dispositivo = input("Ingrese el tipo de dispositivo (NIO, Radar, Asistente Virtual, Cámara): ")
+                self.data_manager.insert_dispositivo_ponton(codigo_naval, serial_dispositivo, tipo_dispositivo)
             elif opcion == "0":
                 break
             else:
@@ -101,6 +89,8 @@ class MainMenu:
             print("2. Consultar todas las Ubicaciones")
             print("3. Consultar todos los Pontones")
             print("4. Consultar todos los Dispositivos")
+            print("5. Consultar todos los Dispositivos asociados a un Pontón")
+            print("6. Consultar Credenciales de Dispositivos")
             print("0. Volver al Menú Principal\n")
 
             opcion = input("Seleccione una opción: ")
@@ -131,15 +121,39 @@ class MainMenu:
                 pontones = self.data_manager.consultar_pontones()
                 if pontones:
                     print("\nPontones registrados:")
-                    print(f"{'Codigo Naval':<15} {'Nombre del Centro':<22} {'Estado':<10} {'IA':<25} {'Serial nio':<15} {'Serial radar':<15}")
+                    print(f"{'Codigo Naval':<15} {'Nombre del Centro':<22} {'Estado':<10} {'IA':<25} {'Observaciones':<15}")
                     print("=" * 107)
                     for ponton in pontones:
                         estado = "Activo" if ponton[2] else "Inactivo"
-                        print(f"{ponton[0]:<15} {ponton[1]:<22} {estado:<10} {ponton[3]:<25} {ponton[4]:<15} {ponton[5]:<15}")
+                        print(f"{ponton[0]:<15} {ponton[1]:<22} {estado:<10} {ponton[3]:<25} {ponton[4]:<15}")
                 else:
                     print("No se encontraron pontones registrados.")
-            elif opcion == "4":
+
+            elif opcion == "4":  # Consultar Dispositivos
                 dispositivos = self.data_manager.consultar_dispositivos()
+
+            elif opcion == "5":  # Consultar Dispositivos en Pontón
+                codigo_naval = input("Ingrese el código naval del pontón: ")
+                dispositivos = self.data_manager.consultar_dispositivos_ponton(codigo_naval)
+                if dispositivos:
+                    print(f"\nDispositivos en el pontón '{codigo_naval}':")
+                    print(f"{'Serial':<15} {'Tipo':<20} {'Dirección IP':<20} {'Firmware':<15} {'ID Credenciales':<15}")
+                    print("=" * 85)
+                    for dispositivo in dispositivos:
+                        print(f"{dispositivo['Serial']:<15} {dispositivo['Tipo']:<20} {dispositivo['Dirección IP']:<20} {dispositivo['Firmware']:<15} {dispositivo['ID Credenciales']:<15}")
+                else:
+                    print(f"No se encontraron dispositivos en el pontón '{codigo_naval}'.")
+
+            elif opcion == "6":  # Consultar Credenciales de Dispositivo
+                serial_dispositivo = input("Ingrese el serial del dispositivo: ")
+                credenciales = self.data_manager.consultar_credenciales(serial_dispositivo)
+                if credenciales:
+                    print(f"\nCredenciales del dispositivo '{serial_dispositivo}':")
+                    print(f"Usuario: {credenciales['Usuario']}")
+                    print(f"Contraseña: {credenciales['Contraseña']}")
+                else:
+                    print(f"No se encontraron credenciales para el dispositivo '{serial_dispositivo}'.")
+
             elif opcion == "0":
                 break
             else:

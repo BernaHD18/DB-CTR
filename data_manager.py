@@ -100,16 +100,27 @@ class DataManager:
         except Exception as e:
             print(f"Error al insertar Cámara: {e}")
 
-    def insert_ponton(self, codigo_naval, nombre_centro, estado, ia, serial_nio, serial_radar, serial_asistente_virtual, serial_camara, observaciones):
+    def insert_ponton(self, codigo_naval, nombre_centro, estado, ia, observaciones):
         try:
             self.connection.cur.execute("""
-                INSERT INTO Ponton (Codigo_Naval, Nombre_Centro, Estado, IA, Serial_NIO, Serial_Radar, Serial_Asistente_Virtual, Serial_Camara, Observaciones)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);
-            """, (codigo_naval, nombre_centro, estado, ia, serial_nio, serial_radar, serial_asistente_virtual, serial_camara, observaciones))
+                INSERT INTO Ponton (Codigo_Naval, Nombre_Centro, Estado, IA, Observaciones)
+                VALUES (%s, %s, %s, %s, %s);
+            """, (codigo_naval, nombre_centro, estado, ia, observaciones))
             self.connection.conn.commit()
             print(f"Pontón '{codigo_naval}' insertado correctamente")
         except Exception as e:
             print(f"Error al insertar pontón: {e}")
+
+    def insert_dispositivo_ponton(self, codigo_naval, serial_dispositivo, tipo_dispositivo):
+        try:
+            self.connection.cur.execute("""
+                INSERT INTO Ponton_Dispositivos (codigo_naval, serial_dispositivo, tipo_dispositivo)
+                VALUES (%s, %s, %s);
+            """, (codigo_naval, serial_dispositivo, tipo_dispositivo))
+            self.connection.conn.commit()
+            print(f"Dispositivo '{serial_dispositivo}' de tipo '{tipo_dispositivo}' insertado en el pontón '{codigo_naval}' correctamente")
+        except Exception as e:
+            print(f"Error al insertar dispositivo en el pontón: {e}")
 
     def insert_historico_movimientos(self, codigo_naval, id_centro_anterior, id_centro_nuevo, fecha_instalacion_centro, fecha_termino_centro):
         try:
@@ -170,7 +181,7 @@ class DataManager:
 
     def consultar_pontones(self):
         try:
-            self.connection.cur.execute("SELECT * FROM Ponton;")
+            self.connection.cur.execute("SELECT Codigo_Naval, Nombre_Centro, Estado, IA, Observaciones FROM Ponton;")
             resultados = self.connection.cur.fetchall()
             return resultados
         except Exception as e:
@@ -247,6 +258,56 @@ class DataManager:
             return resultados
         except Exception as e:
             print(f"Error al consultar histórico de dispositivos: {e}")
+
+    def consultar_dispositivos_ponton(self, codigo_naval):
+        try:
+            self.connection.cur.execute("""
+                SELECT d.Serial, d.Direccionamiento_IP, d.Firmware_Version, d.ID_Credenciales, pd.tipo_dispositivo
+                FROM Dispositivos d
+                JOIN Ponton_Dispositivos pd ON d.Serial = pd.serial_dispositivo
+                WHERE pd.codigo_naval = %s;
+            """, (codigo_naval,))
+            dispositivos = self.connection.cur.fetchall()
+
+            if not dispositivos:
+                return []  # Devolver una lista vacía si no hay dispositivos
+
+            dispositivos_formateados = []
+            for dispositivo in dispositivos:
+                dispositivos_formateados.append({
+                    "Serial": dispositivo[0],
+                    "Dirección IP": dispositivo[1],
+                    "Firmware": dispositivo[2],
+                    "ID Credenciales": dispositivo[3],
+                    "Tipo": dispositivo[4]
+                })
+
+            return dispositivos_formateados
+        except Exception as e:
+            print(f"Error al consultar dispositivos en el pontón '{codigo_naval}': {e}")
+            return []  # Retornar una lista vacía en caso de error
+
+    def consultar_credenciales(self, serial_dispositivo):
+        try:
+            self.connection.cur.execute("""
+                SELECT c.Usuario, c.Contraseña
+                FROM Credenciales c
+                JOIN Dispositivos d ON c.ID_Credenciales = d.ID_Credenciales
+                WHERE d.Serial = %s;
+            """, (serial_dispositivo,))
+            credenciales = self.connection.cur.fetchone()
+
+            if not credenciales:
+                print(f"No se encontraron credenciales para el dispositivo con serial '{serial_dispositivo}'.")
+                return None
+
+            return {
+                "Usuario": credenciales[0],
+                "Contraseña": credenciales[1]
+            }
+        except Exception as e:
+            print(f"Error al consultar credenciales para el dispositivo '{serial_dispositivo}': {e}")
+            return None
 
     def normalize_input(prompt, to_lower=False, to_bool=False):
         value = input(prompt).strip()  # Elimina espacios extra

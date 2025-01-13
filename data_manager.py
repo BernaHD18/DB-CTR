@@ -1,16 +1,21 @@
+import logging
+
 class DataManager:
     def __init__(self, connection):
         self.connection = connection
 
     def insert_empresa(self, nombre_empresa):
+        if not nombre_empresa:
+            logging.error("El nombre de la empresa no puede estar vacío")
+            return
         try:
             self.connection.cur.execute("""
                 INSERT INTO Empresa (Nombre_Empresa) VALUES (%s);
             """, (nombre_empresa,))
             self.connection.conn.commit()
-            print(f"Empresa '{nombre_empresa}' insertada correctamente")
+            logging.info(f"Empresa '{nombre_empresa}' insertada correctamente")
         except Exception as e:
-            print(f"Error al insertar empresa: {e}")
+            logging.error(f"Error al insertar empresa: {e}")
 
     def insert_ubicacion(self, nombre_centro, grupo_telegram, nombre_empresa):
         try:

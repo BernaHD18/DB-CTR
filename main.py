@@ -1,9 +1,18 @@
+import logging
+import ctypes
 from db_connection import DatabaseConnection
 from data_manager import DataManager
 from table_manager import TableManager
 from menu import MainMenu
+from gui import App
 #from gui import App
 
+# Configuración de loggin
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%d-%m-%Y %H:%M:%S'
+)
 # Configuración de la conexión
 db = DatabaseConnection(
     dbname="DB-CTR",
@@ -23,12 +32,21 @@ try:
 
     # Inicialización de la aplicación
     data_manager = DataManager(db)
-    menu = MainMenu(data_manager)
-    menu.show_menu()
+    #menu = MainMenu(data_manager)
+    #menu.show_menu()
+
+     # Cambiar el icono en la barra de tareas
+    myappid = 'mycompany.myproduct.subproduct.version'  # Arbitrary string
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
     # Creación y uso de la interfaz gráfica
-    #app = App(data_manager)
-    #app.mainloop()
+    app = App(data_manager)
+    app.iconbitmap('icono.ico')
+    app.mainloop()
+
+except Exception as e:
+    logging.error(f"Error en la aplicación: {e}")
+
 finally:
     db.close()
 

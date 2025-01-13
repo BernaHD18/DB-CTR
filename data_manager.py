@@ -5,17 +5,21 @@ class DataManager:
         self.connection = connection
 
     def insert_empresa(self, nombre_empresa):
-        if not nombre_empresa:
-            logging.error("El nombre de la empresa no puede estar vacío")
-            return
         try:
-            self.connection.cur.execute("""
-                INSERT INTO Empresa (Nombre_Empresa) VALUES (%s);
-            """, (nombre_empresa,))
+            self.connection.cur.execute("INSERT INTO Empresa (Nombre_Empresa) VALUES (%s);", (nombre_empresa,))
             self.connection.conn.commit()
             logging.info(f"Empresa '{nombre_empresa}' insertada correctamente")
         except Exception as e:
             logging.error(f"Error al insertar empresa: {e}")
+    
+    def delete_empresa(self, nombre_empresa):
+        try:
+            self.connection.cur.execute("DELETE FROM Empresa WHERE Nombre_Empresa = %s;", (nombre_empresa,))
+            self.connection.conn.commit()
+            logging.info(f"Empresa '{nombre_empresa}' borrada correctamente")
+        except Exception as e:
+            logging.error(f"Error al borrar empresa: {e}")
+
 
     def insert_ubicacion(self, nombre_centro, grupo_telegram, nombre_empresa):
         try:
@@ -27,6 +31,14 @@ class DataManager:
             print(f"Ubicación '{nombre_centro}' insertada correctamente")
         except Exception as e:
             print(f"Error al insertar ubicación: {e}")
+
+    def delete_ubicacion(self, nombre_centro):
+        try:
+            self.connection.cur.execute("DELETE FROM Ubicacion WHERE Nombre_Centro = %s;", (nombre_centro,))
+            self.connection.conn.commit()
+            logging.info(f"Ubicación '{nombre_centro}' borrada correctamente")
+        except Exception as e:
+            logging.error(f"Error al borrar ubicación: {e}")
 
     def insert_credenciales(self, usuario, contrasena):
         try:
@@ -42,90 +54,140 @@ class DataManager:
         except Exception as e:
             print(f"Error al insertar credenciales: {e}")
 
-    def insert_dispositivo(self, serial, direccionamiento_ip, firmware_version, id_credenciales):
+    def insert_dispositivo(self, serial, direccionamiento_ip, firmware, usuario, contrasena):
         try:
+            # Insertar credenciales y obtener el ID generado
+            self.connection.cur.execute("""
+                INSERT INTO Credenciales (Usuario, Contraseña)
+                VALUES (%s, %s)
+                RETURNING ID_Credenciales;
+            """, (usuario, contrasena))
+            id_credenciales = self.connection.cur.fetchone()[0]
+            logging.info(f"Credenciales insertadas correctamente con ID: {id_credenciales}")
+
+            # Insertar dispositivo con el ID de credenciales
             self.connection.cur.execute("""
                 INSERT INTO Dispositivos (Serial, Direccionamiento_IP, Firmware_Version, ID_Credenciales)
                 VALUES (%s, %s, %s, %s);
-            """, (serial, direccionamiento_ip, firmware_version, id_credenciales))
+            """, (serial, direccionamiento_ip, firmware, id_credenciales))
             self.connection.conn.commit()
-            print(f"Dispositivo '{serial}' insertado correctamente")
+            logging.info(f"Dispositivo '{serial}' insertado correctamente")
         except Exception as e:
-            print(f"Error al insertar dispositivo: {e}")
+            logging.error(f"Error al insertar dispositivo: {e}")
+            self.connection.conn.rollback()
 
     def insert_nio(self, serial, modelo, direccionamiento_ip, firmware_version, usuario, contrasena):
         try:
-            id_credenciales = self.insert_credenciales(usuario, contrasena)
-            self.insert_dispositivo(serial, direccionamiento_ip, firmware_version, id_credenciales)
+            self.insert_dispositivo(serial, direccionamiento_ip, firmware_version, usuario, contrasena)
             self.connection.cur.execute("""
                 INSERT INTO NIO (Serial, Modelo)
                 VALUES (%s, %s);
             """, (serial, modelo))
             self.connection.conn.commit()
-            print(f"NIO '{serial}' insertado correctamente")
+            logging.info(f"NIO '{serial}' insertado correctamente")
         except Exception as e:
-            print(f"Error al insertar NIO: {e}")
+            logging.error(f"Error al insertar NIO: {e}")
+            self.connection.conn.rollback()
 
     def insert_radar(self, serial, canal_rf, direccionamiento_ip, firmware_version, usuario, contrasena):
         try:
-            id_credenciales = self.insert_credenciales(usuario, contrasena)
-            self.insert_dispositivo(serial, direccionamiento_ip, firmware_version, id_credenciales)
+            self.insert_dispositivo(serial, direccionamiento_ip, firmware_version, usuario, contrasena)
             self.connection.cur.execute("""
                 INSERT INTO Radar (Serial, Canal_RF)
                 VALUES (%s, %s);
             """, (serial, canal_rf))
             self.connection.conn.commit()
-            print(f"Radar '{serial}' insertado correctamente")
+            logging.info(f"Radar '{serial}' insertado correctamente")
         except Exception as e:
-            print(f"Error al insertar Radar: {e}")
+            logging.error(f"Error al insertar Radar: {e}")
+            self.connection.conn.rollback()
 
     def insert_asistente_virtual(self, serial, direccionamiento_ip, firmware_version, usuario, contrasena):
         try:
-            id_credenciales = self.insert_credenciales(usuario, contrasena)
-            self.insert_dispositivo(serial, direccionamiento_ip, firmware_version, id_credenciales)
+            self.insert_dispositivo(serial, direccionamiento_ip, firmware_version, usuario, contrasena)
             self.connection.cur.execute("""
                 INSERT INTO Asistente_Virtual (Serial)
                 VALUES (%s);
             """, (serial,))
             self.connection.conn.commit()
-            print(f"Asistente Virtual '{serial}' insertado correctamente")
+            logging.info(f"Asistente Virtual '{serial}' insertado correctamente")
         except Exception as e:
-            print(f"Error al insertar Asistente Virtual: {e}")
+            logging.error(f"Error al insertar Asistente Virtual: {e}")
+            self.connection.conn.rollback()
 
     def insert_camara(self, serial, direccionamiento_ip, firmware_version, usuario, contrasena):
         try:
-            id_credenciales = self.insert_credenciales(usuario, contrasena)
-            self.insert_dispositivo(serial, direccionamiento_ip, firmware_version, id_credenciales)
+            self.insert_dispositivo(serial, direccionamiento_ip, firmware_version, usuario, contrasena)
             self.connection.cur.execute("""
                 INSERT INTO Camara (Serial)
                 VALUES (%s);
             """, (serial,))
             self.connection.conn.commit()
-            print(f"Cámara '{serial}' insertada correctamente")
+            logging.info(f"Cámara '{serial}' insertada correctamente")
         except Exception as e:
-            print(f"Error al insertar Cámara: {e}")
+            logging.error(f"Error al insertar Cámara: {e}")
+            self.connection.conn.rollback()
 
     def insert_ponton(self, codigo_naval, nombre_centro, estado, ia, observaciones):
         try:
+            # Verificar si el código naval ya está asociado a otro centro
+            self.connection.cur.execute("SELECT Nombre_Centro FROM Ponton WHERE Codigo_Naval = %s;", (codigo_naval,))
+            resultado = self.connection.cur.fetchone()
+            if resultado and resultado[0] != nombre_centro:
+                raise ValueError(f"El código naval '{codigo_naval}' ya está asociado al centro '{resultado[0]}'")
+
+            # Verificar si el centro ya está asociado a otro código naval
+            self.connection.cur.execute("SELECT Codigo_Naval FROM Ponton WHERE Nombre_Centro = %s;", (nombre_centro,))
+            resultado = self.connection.cur.fetchone()
+            if resultado and resultado[0] != codigo_naval:
+                raise ValueError(f"El centro '{nombre_centro}' ya está asociado al código naval '{resultado[0]}'")
+
+            # Insertar el nuevo pontón
             self.connection.cur.execute("""
                 INSERT INTO Ponton (Codigo_Naval, Nombre_Centro, Estado, IA, Observaciones)
                 VALUES (%s, %s, %s, %s, %s);
             """, (codigo_naval, nombre_centro, estado, ia, observaciones))
             self.connection.conn.commit()
-            print(f"Pontón '{codigo_naval}' insertado correctamente")
+            logging.info(f"Pontón '{codigo_naval}' insertado correctamente")
         except Exception as e:
-            print(f"Error al insertar pontón: {e}")
+            logging.error(f"Error al insertar pontón: {e}")
+            self.connection.conn.rollback()
 
-    def insert_dispositivo_ponton(self, codigo_naval, serial_dispositivo, tipo_dispositivo):
+    def consultar_centros(self):
+        try:
+            self.connection.cur.execute("""
+                SELECT Nombre_Centro 
+                FROM Ubicacion 
+                WHERE Nombre_Centro NOT IN (SELECT Nombre_Centro FROM Ponton);
+            """)
+            resultados = self.connection.cur.fetchall()
+            return [resultado[0] for resultado in resultados]
+        except Exception as e:
+            logging.error(f"Error al consultar centros: {e}")
+            return []
+    
+    def delete_ponton(self, codigo_naval):
+        try:
+            self.connection.cur.execute("DELETE FROM Ponton WHERE Codigo_Naval = %s;", (codigo_naval,))
+            self.connection.conn.commit()
+            logging.info(f"Pontón '{codigo_naval}' borrado correctamente")
+        except Exception as e:
+            logging.error(f"Error al borrar pontón: {e}")
+            raise
+        
+    def insert_dispositivo_ponton(self, codigo_naval_ponton, serial, tipo_dispositivo):
         try:
             self.connection.cur.execute("""
                 INSERT INTO Ponton_Dispositivos (codigo_naval, serial_dispositivo, tipo_dispositivo)
                 VALUES (%s, %s, %s);
-            """, (codigo_naval, serial_dispositivo, tipo_dispositivo))
+            """, (codigo_naval_ponton, serial, tipo_dispositivo))
             self.connection.conn.commit()
-            print(f"Dispositivo '{serial_dispositivo}' de tipo '{tipo_dispositivo}' insertado en el pontón '{codigo_naval}' correctamente")
+            logging.info(f"Dispositivo '{serial}' asociado al pontón '{codigo_naval_ponton}' como '{tipo_dispositivo}'")
         except Exception as e:
-            print(f"Error al insertar dispositivo en el pontón: {e}")
+            logging.error(f"Error al asociar dispositivo al pontón: {e}")
+            self.connection.conn.rollback()
+
+
 
     def insert_historico_movimientos(self, codigo_naval, id_centro_anterior, id_centro_nuevo, fecha_instalacion_centro, fecha_termino_centro):
         try:
@@ -170,12 +232,13 @@ class DataManager:
 
     def consultar_empresas(self):
         try:
-            self.connection.cur.execute("SELECT * FROM Empresa;")
+            self.connection.cur.execute("SELECT Nombre_Empresa FROM Empresa;")
             resultados = self.connection.cur.fetchall()
             return resultados
         except Exception as e:
-            print(f"Error al consultar empresas: {e}")
-
+            logging.error(f"Error al consultar empresas: {e}")
+            return []
+        
     def consultar_ubicaciones(self):
         try:
             self.connection.cur.execute("SELECT * FROM Ubicacion;")
@@ -190,64 +253,22 @@ class DataManager:
             resultados = self.connection.cur.fetchall()
             return resultados
         except Exception as e:
-            print(f"Error al consultar pontones: {e}")
+            logging.error(f"Error al consultar pontones: {e}")
+            return []
 
     def consultar_dispositivos(self):
         try:
-            self.connection.cur.execute("SELECT * FROM Dispositivos;")
+            self.connection.cur.execute("""
+                SELECT d.Serial, d.Direccionamiento_IP, d.Firmware_Version, c.Usuario, c.Contraseña
+                FROM Dispositivos d
+                JOIN Credenciales c ON d.ID_Credenciales = c.ID_Credenciales;
+            """)
             dispositivos = self.connection.cur.fetchall()
-
-            if not dispositivos:
-                print("No se encontraron dispositivos en la base de datos.")
-                return []  # Devolver una lista vacía para evitar errores
-
-            # Identificar tipos de dispositivos
-            dispositivos_formateados = []
-            for dispositivo in dispositivos:
-                serial = dispositivo[0]
-                self.connection.cur.execute("SELECT * FROM NIO WHERE Serial = %s;", (serial,))
-                if self.connection.cur.fetchone():
-                    tipo = "NIO"
-                else:
-                    self.connection.cur.execute("SELECT * FROM Radar WHERE Serial = %s;", (serial,))
-                    if self.connection.cur.fetchone():
-                        tipo = "Radar"
-                    else:
-                        self.connection.cur.execute("SELECT * FROM Asistente_Virtual WHERE Serial = %s;", (serial,))
-                        if self.connection.cur.fetchone():
-                            tipo = "Asistente Virtual"
-                        else:
-                            self.connection.cur.execute("SELECT * FROM Camara WHERE Serial = %s;", (serial,))
-                            if self.connection.cur.fetchone():
-                                tipo = "Cámara"
-                            else:
-                                tipo = "Desconocido"
-
-                dispositivos_formateados.append({
-                    "Serial": serial,
-                    "Dirección IP": dispositivo[1],
-                    "Firmware": dispositivo[2],
-                    "ID Credenciales": dispositivo[3],
-                    "Tipo": tipo
-                })
-
-            # Mostrar en un formato amigable
-            print("Dispositivos registrados:")
-            print("{:<12} {:<30} {:<37} {:<20} {:<15}".format(
-                "Serial", "Dirección IP", "Firmware", "ID Credenciales", "Tipo"
-            ))
-            print("=" * 120)
-            for dispositivo in dispositivos_formateados:
-                print("{:<12} {:<30} {:<37} {:<20} {:<15}".format(
-                    dispositivo["Serial"], dispositivo["Dirección IP"], dispositivo["Firmware"],
-                    dispositivo["ID Credenciales"], dispositivo["Tipo"]
-                ))
-
-            return dispositivos_formateados  # Retornar los datos formateados
+            return dispositivos if dispositivos else []
         except Exception as e:
-            print(f"Error al consultar dispositivos: {e}")
-            return []  # Retornar una lista vacía en caso de error
-
+            logging.error(f"Error al consultar dispositivos: {e}")
+            return []
+        
     def consultar_historico_movimientos(self):
         try:
             self.connection.cur.execute("SELECT * FROM Historico_Movimientos;")

@@ -15,6 +15,7 @@
   - `psycopg2`
   - `ctypes`
   - `logging`
+  - `tkcalendar`
 
 ## Uso 
 

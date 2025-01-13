@@ -1,4 +1,5 @@
 import logging
+from tkinter import messagebox
 
 class DataManager:
     def __init__(self, connection):
@@ -155,15 +156,20 @@ class DataManager:
 
     def consultar_centros(self):
         try:
-            self.connection.cur.execute("""
-                SELECT Nombre_Centro 
-                FROM Ubicacion 
-                WHERE Nombre_Centro NOT IN (SELECT Nombre_Centro FROM Ponton);
-            """)
-            resultados = self.connection.cur.fetchall()
-            return [resultado[0] for resultado in resultados]
+            self.connection.cur.execute("SELECT Nombre_Centro FROM Ubicacion;")
+            centros = self.connection.cur.fetchall()
+            return [centro[0] for centro in centros] if centros else []
         except Exception as e:
             logging.error(f"Error al consultar centros: {e}")
+            return []
+        
+    def consultar_codigos_navales(self):
+        try:
+            self.connection.cur.execute("SELECT Codigo_Naval FROM Ponton;")
+            codigos_navales = self.connection.cur.fetchall()
+            return [codigo[0] for codigo in codigos_navales] if codigos_navales else []
+        except Exception as e:
+            logging.error(f"Error al consultar códigos navales: {e}")
             return []
     
     def delete_ponton(self, codigo_naval):
@@ -189,25 +195,26 @@ class DataManager:
 
 
 
-    def insert_historico_movimientos(self, codigo_naval, id_centro_anterior, id_centro_nuevo, fecha_instalacion_centro, fecha_termino_centro):
+    def insert_historico_movimientos(self, codigo_naval, centro_anterior, centro_nuevo, fecha_instalacion, fecha_termino):
         try:
-            # Insertar en la tabla Historico_Movimientos
             self.connection.cur.execute("""
                 INSERT INTO Historico_Movimientos (Codigo_Naval, ID_CentroAnterior, ID_CentroNuevo, Fecha_Instalacion_Centro, Fecha_Termino_Centro)
                 VALUES (%s, %s, %s, %s, %s);
-            """, (codigo_naval, id_centro_anterior, id_centro_nuevo, fecha_instalacion_centro, fecha_termino_centro))
+            """, (codigo_naval, centro_anterior, centro_nuevo, fecha_instalacion, fecha_termino))
             
             # Actualizar la tabla Ponton con la nueva ubicación
             self.connection.cur.execute("""
                 UPDATE Ponton
                 SET Nombre_Centro = %s
                 WHERE Codigo_Naval = %s;
-            """, (id_centro_nuevo, codigo_naval))
+            """, (centro_nuevo, codigo_naval))
             
             self.connection.conn.commit()
-            print("Histórico de movimientos insertado y pontón actualizado correctamente")
+            logging.info("Histórico de movimientos insertado y pontón actualizado correctamente")
         except Exception as e:
-            print(f"Error al insertar histórico de movimientos y actualizar pontón: {e}")
+            logging.error(f"Error al insertar histórico de movimientos y actualizar pontón: {e}")
+            self.connection.conn.rollback()
+
 
     def insert_historico_dispositivos(self, serial, id_codigo_naval_anterior, id_codigo_naval_nuevo, fecha_instalacion_dispositivo, fecha_termino_dispositivo):
         try:
@@ -259,31 +266,66 @@ class DataManager:
     def consultar_dispositivos(self):
         try:
             self.connection.cur.execute("""
-                SELECT d.Serial, d.Direccionamiento_IP, d.Firmware_Version, c.Usuario, c.Contraseña
+                SELECT d.Serial, pd.codigo_naval, d.Direccionamiento_IP, d.Firmware_Version, d.ID_Credenciales, pd.tipo_dispositivo
                 FROM Dispositivos d
-                JOIN Credenciales c ON d.ID_Credenciales = c.ID_Credenciales;
+                JOIN Ponton_Dispositivos pd ON d.Serial = pd.serial_dispositivo;
             """)
             dispositivos = self.connection.cur.fetchall()
             return dispositivos if dispositivos else []
         except Exception as e:
             logging.error(f"Error al consultar dispositivos: {e}")
             return []
+
+    def add_historico_dispositivos(self):
+        serial = self.serial_dispositivo_var.get()
+        codigo_naval_anterior = self.codigo_naval_anterior_var.get()
+        codigo_naval_nuevo = self.codigo_naval_nuevo_var.get()
+        fecha_instalacion = self.fecha_instalacion_var.get()
+        fecha_termino = self.fecha_termino_var.get()
+
+        if not serial or not codigo_naval_nuevo or not fecha_instalacion:
+            messagebox.showerror("Error", "Todos los campos son obligatorios")
+            return
+
+        try:
+            self.data_manager.insertar_historico_dispositivos(serial, codigo_naval_anterior, codigo_naval_nuevo, fecha_instalacion, fecha_termino)
+            self.refresh_historico_dispositivos_list()
+            messagebox.showinfo("Éxito", "Histórico de dispositivos agregado correctamente")
+        except Exception as e:
+            logging.error(f"Error al insertar histórico de dispositivos: {e}")
+            messagebox.showerror("Error", f"Error al insertar histórico de dispositivos: {e}")
+
+    def insertar_historico_dispositivos(self, serial, codigo_naval_anterior, codigo_naval_nuevo, fecha_instalacion, fecha_termino):
+        try:
+            self.connection.cur.execute("""
+                INSERT INTO Historico_Dispositivos (Serial, Codigo_Naval_Anterior, Codigo_Naval_Nuevo, Fecha_Instalacion_Dispositivo, Fecha_Termino_Dispositivo)
+                VALUES (%s, %s, %s, %s, %s);
+            """, (serial, codigo_naval_anterior, codigo_naval_nuevo, fecha_instalacion, fecha_termino))
+            self.connection.conn.commit()
+        except Exception as e:
+            logging.error(f"Error al insertar histórico de dispositivos: {e}")
+            self.connection.conn.rollback()
+            raise
         
     def consultar_historico_movimientos(self):
         try:
-            self.connection.cur.execute("SELECT * FROM Historico_Movimientos;")
+            self.connection.cur.execute("SELECT Codigo_Naval, ID_CentroAnterior, ID_CentroNuevo, Fecha_Instalacion_Centro, Fecha_Termino_Centro FROM Historico_Movimientos;")
             resultados = self.connection.cur.fetchall()
-            return resultados
+            return resultados if resultados else []
         except Exception as e:
-            print(f"Error al consultar histórico de movimientos: {e}")
+            logging.error(f"Error al consultar histórico de movimientos: {e}")
+            return []
 
     def consultar_historico_dispositivos(self):
         try:
-            self.connection.cur.execute("SELECT * FROM Historico_Dispositivos;")
-            resultados = self.connection.cur.fetchall()
-            return resultados
+            self.connection.cur.execute("""
+                SELECT Serial, Codigo_Naval_Anterior, Codigo_Naval_Nuevo, Fecha_Instalacion_Dispositivo, Fecha_Termino_Dispositivo
+                FROM Historico_Dispositivos;
+            """)
+            return self.connection.cur.fetchall()
         except Exception as e:
-            print(f"Error al consultar histórico de dispositivos: {e}")
+            logging.error(f"Error al consultar histórico de dispositivos: {e}")
+            return None
 
     def consultar_dispositivos_ponton(self, codigo_naval):
         try:

@@ -9,7 +9,7 @@ class App(tk.Tk):
         super().__init__()
         self.data_manager = data_manager
         self.title("Gestión de Base de Datos")
-        self.geometry("800x600")
+        self.geometry("1200x600")
 
         # Cambiar el icono de la ventana
         self.iconbitmap('icono.ico')
@@ -232,7 +232,8 @@ class App(tk.Tk):
 
     def refresh_nombre_centro_ponton_combobox(self):
         centros = self.data_manager.consultar_centros()
-        self.nombre_centro_ponton_combobox['values'] = centros
+        nombres_centros = [centro[0] for centro in centros]
+        self.nombre_centro_ponton_combobox['values'] = nombres_centros
 
     def refresh_nombre_empresa_combobox(self):
         empresas = self.data_manager.consultar_empresas()
@@ -331,14 +332,13 @@ class App(tk.Tk):
         add_button = ttk.Button(form_frame, text="Agregar", command=self.add_dispositivo)
         add_button.grid(row=8, column=0, columnspan=2, pady=10)
 
-        self.dispositivo_tree = ttk.Treeview(tab, columns=("Serial", "Código Naval", "Dirección IP", "Firmware", "Usuario", "Contraseña", "Tipo de Dispositivo"), show="headings")
+        self.dispositivo_tree = ttk.Treeview(tab, columns=("Serial", "Codigo_Naval", "Direccionamiento_IP", "Firmware_Version", "ID_Credenciales", "Tipo_Dispositivo"), show="headings")
         self.dispositivo_tree.heading("Serial", text="Serial")
-        self.dispositivo_tree.heading("Código Naval", text="Código Naval")
-        self.dispositivo_tree.heading("Dirección IP", text="Dirección IP")
-        self.dispositivo_tree.heading("Firmware", text="Firmware")
-        self.dispositivo_tree.heading("Usuario", text="Usuario")
-        self.dispositivo_tree.heading("Contraseña", text="Contraseña")
-        self.dispositivo_tree.heading("Tipo de Dispositivo", text="Tipo de Dispositivo")
+        self.dispositivo_tree.heading("Codigo_Naval", text="Código Naval")
+        self.dispositivo_tree.heading("Direccionamiento_IP", text="Dirección IP")
+        self.dispositivo_tree.heading("Firmware_Version", text="Firmware")
+        self.dispositivo_tree.heading("ID_Credenciales", text="ID Credenciales")
+        self.dispositivo_tree.heading("Tipo_Dispositivo", text="Tipo de Dispositivo")
         self.dispositivo_tree.pack(padx=10, pady=10, fill="both", expand=True)
 
         scrollbar = ttk.Scrollbar(tab, orient="vertical", command=self.dispositivo_tree.yview)
@@ -363,8 +363,6 @@ class App(tk.Tk):
             self.canal_rf_entry = ttk.Entry(self.extra_frame, textvariable=self.canal_rf_var)
             self.canal_rf_entry.grid(row=0, column=1, padx=5, pady=5)
         # Agregar más campos según sea necesario para otros tipos de dispositivos
-
-
 
     def refresh_dispositivo_list(self):
         for item in self.dispositivo_tree.get_children():
@@ -471,13 +469,14 @@ class App(tk.Tk):
             self.historico_tree.insert("", "end", values=(movimiento[0], movimiento[1], movimiento[2], movimiento[3], fecha_instalacion, fecha_termino))
 
     def add_historico_movimientos(self):
-        codigo_naval = self.codigo_naval_historico_var.get()
-        id_centro_anterior = self.id_centro_anterior_var.get()
-        id_centro_nuevo = self.id_centro_nuevo_var.get()
-        fecha_instalacion = self.fecha_instalacion_var.get()
-        fecha_termino = self.fecha_termino_var.get()
-        if codigo_naval and id_centro_anterior and id_centro_nuevo and fecha_instalacion and fecha_termino:
-            self.data_manager.insert_historico_movimientos(codigo_naval, id_centro_anterior, id_centro_nuevo, fecha_instalacion, fecha_termino)
+        codigo_naval = self.codigo_naval_var.get().strip()
+        centro_anterior = self.centro_anterior_var.get().strip()
+        centro_nuevo = self.centro_nuevo_var.get().strip()
+        fecha_instalacion = self.fecha_instalacion_var.get().strip()
+        fecha_termino = self.fecha_termino_var.get().strip()
+
+        if codigo_naval and centro_anterior and centro_nuevo and fecha_instalacion and fecha_termino:
+            self.data_manager.insert_historico_movimientos(codigo_naval, centro_anterior, centro_nuevo, fecha_instalacion, fecha_termino)
             self.refresh_historico_movimientos_list()
         else:
             messagebox.showerror("Error", "Todos los campos son obligatorios")
@@ -488,9 +487,25 @@ class App(tk.Tk):
         historico_movimientos = self.data_manager.consultar_historico_movimientos()
         if historico_movimientos:
             for movimiento in historico_movimientos:
-                self.historico_movimientos_tree.insert("", "end", values=movimiento)
+                fecha_instalacion = movimiento[3].strftime("%d-%m-%Y") if movimiento[3] else "N/A"
+                fecha_termino = movimiento[4].strftime("%d-%m-%Y") if movimiento[4] else "N/A"
+                self.historico_movimientos_tree.insert("", "end", values=(movimiento[0], movimiento[1], movimiento[2], fecha_instalacion, fecha_termino))
         else:
             logging.error("No se encontraron movimientos históricos")
+
+    def refresh_centro_anterior_combobox(self):
+        centros = self.data_manager.consultar_centros()
+        nombres_centros = [centro[0] for centro in centros]
+        self.centro_anterior_combobox['values'] = nombres_centros
+
+    def refresh_centro_nuevo_combobox(self):
+        centros = self.data_manager.consultar_centros()
+        nombres_centros = [centro[0] for centro in centros]
+        self.centro_nuevo_combobox['values'] = nombres_centros
+
+    def refresh_codigo_naval_combobox(self):
+        codigos_navales = self.data_manager.consultar_codigos_navales()
+        self.codigo_naval_combobox['values'] = codigos_navales
 
     def create_tab_historico_movimientos(self):
         tab = ttk.Frame(self.notebook)
@@ -500,23 +515,22 @@ class App(tk.Tk):
         form_frame.pack(padx=10, pady=10, fill="x")
 
         ttk.Label(form_frame, text="Código Naval:").grid(row=0, column=0, padx=5, pady=5)
-        self.codigo_naval_historico_var = tk.StringVar()
-        self.codigo_naval_historico_combobox = ttk.Combobox(form_frame, textvariable=self.codigo_naval_historico_var)
-        self.codigo_naval_historico_combobox.grid(row=0, column=1, padx=5, pady=5)
-        self.refresh_codigo_naval_historico_combobox()
+        self.codigo_naval_var = tk.StringVar()
+        self.codigo_naval_combobox = ttk.Combobox(form_frame, textvariable=self.codigo_naval_var)
+        self.codigo_naval_combobox.grid(row=0, column=1, padx=5, pady=5)
+        self.refresh_codigo_naval_combobox()
 
-        ttk.Label(form_frame, text="ID Centro Anterior:").grid(row=1, column=0, padx=5, pady=5)
-        self.id_centro_anterior_var = tk.StringVar()
-        self.id_centro_anterior_combobox = ttk.Combobox(form_frame, textvariable=self.id_centro_anterior_var)
-        self.id_centro_anterior_combobox.grid(row=1, column=1, padx=5, pady=5)
-        self.id_centro_anterior_combobox.bind("<<ComboboxSelected>>", self.on_centro_anterior_selected)
-        self.refresh_id_centro_anterior_combobox()
+        ttk.Label(form_frame, text="Centro Anterior:").grid(row=1, column=0, padx=5, pady=5)
+        self.centro_anterior_var = tk.StringVar()
+        self.centro_anterior_combobox = ttk.Combobox(form_frame, textvariable=self.centro_anterior_var)
+        self.centro_anterior_combobox.grid(row=1, column=1, padx=5, pady=5)
+        self.refresh_centro_anterior_combobox()
 
-        ttk.Label(form_frame, text="ID Centro Nuevo:").grid(row=2, column=0, padx=5, pady=5)
-        self.id_centro_nuevo_var = tk.StringVar()
-        self.id_centro_nuevo_combobox = ttk.Combobox(form_frame, textvariable=self.id_centro_nuevo_var)
-        self.id_centro_nuevo_combobox.grid(row=2, column=1, padx=5, pady=5)
-        self.refresh_id_centro_nuevo_combobox()
+        ttk.Label(form_frame, text="Centro Nuevo:").grid(row=2, column=0, padx=5, pady=5)
+        self.centro_nuevo_var = tk.StringVar()
+        self.centro_nuevo_combobox = ttk.Combobox(form_frame, textvariable=self.centro_nuevo_var)
+        self.centro_nuevo_combobox.grid(row=2, column=1, padx=5, pady=5)
+        self.refresh_centro_nuevo_combobox()
 
         ttk.Label(form_frame, text="Fecha de Instalación:").grid(row=3, column=0, padx=5, pady=5)
         self.fecha_instalacion_var = tk.StringVar()
@@ -531,10 +545,10 @@ class App(tk.Tk):
         add_button = ttk.Button(form_frame, text="Agregar", command=self.add_historico_movimientos)
         add_button.grid(row=5, column=0, columnspan=2, pady=10)
 
-        self.historico_movimientos_tree = ttk.Treeview(tab, columns=("Código Naval", "ID Centro Anterior", "ID Centro Nuevo", "Fecha Instalación", "Fecha Término"), show="headings")
+        self.historico_movimientos_tree = ttk.Treeview(tab, columns=("Código Naval", "Centro Anterior", "Centro Nuevo", "Fecha Instalación", "Fecha Término"), show="headings")
         self.historico_movimientos_tree.heading("Código Naval", text="Código Naval")
-        self.historico_movimientos_tree.heading("ID Centro Anterior", text="ID Centro Anterior")
-        self.historico_movimientos_tree.heading("ID Centro Nuevo", text="ID Centro Nuevo")
+        self.historico_movimientos_tree.heading("Centro Anterior", text="Centro Anterior")
+        self.historico_movimientos_tree.heading("Centro Nuevo", text="Centro Nuevo")
         self.historico_movimientos_tree.heading("Fecha Instalación", text="Fecha Instalación")
         self.historico_movimientos_tree.heading("Fecha Término", text="Fecha Término")
         self.historico_movimientos_tree.pack(padx=10, pady=10, fill="both", expand=True)
@@ -555,19 +569,24 @@ class App(tk.Tk):
             self.historico_tree.insert("", "end", values=(movimiento[0], movimiento[1], movimiento[2], movimiento[3], fecha_instalacion, fecha_termino))
 
     def add_historico_movimientos(self):
-        codigo_naval = self.codigo_naval_historico_var.get()
-        id_centro_anterior = self.id_centro_anterior_var.get()
-        id_centro_nuevo = self.id_centro_nuevo_var.get()
-        fecha_instalacion = self.fecha_instalacion_var.get()
-        fecha_termino = self.fecha_termino_var.get()
-        if codigo_naval and id_centro_anterior and id_centro_nuevo and fecha_instalacion and fecha_termino:
-            self.data_manager.insert_historico_movimientos(codigo_naval, id_centro_anterior, id_centro_nuevo, fecha_instalacion, fecha_termino)
-            self.refresh_historico_list()
-            self.refresh_ponton_list()  # Actualizar la lista de pontones
-            self.refresh_ubicacion_list()  # Actualizar la lista de ubicaciones
+        codigo_naval = self.codigo_naval_var.get().strip()
+        centro_anterior = self.centro_anterior_var.get().strip()
+        centro_nuevo = self.centro_nuevo_var.get().strip()
+        fecha_instalacion = self.fecha_instalacion_var.get().strip()
+        fecha_termino = self.fecha_termino_var.get().strip()
+
+        if codigo_naval and centro_anterior and centro_nuevo and fecha_instalacion and fecha_termino:
+            self.data_manager.insert_historico_movimientos(codigo_naval, centro_anterior, centro_nuevo, fecha_instalacion, fecha_termino)
             self.refresh_historico_movimientos_list()
         else:
             messagebox.showerror("Error", "Todos los campos son obligatorios")
+
+    def on_serial_dispositivo_selected(self, event):
+        serial = self.serial_dispositivo_var.get()
+        codigo_naval_anterior = self.data_manager.consultar_codigo_naval_por_serial(serial)
+        self.codigo_naval_anterior_var.set(codigo_naval_anterior)
+        self.codigo_naval_anterior_entry.config(state='readonly')
+
 
     def create_tab_historico_dispositivos(self):
         tab = ttk.Frame(self.notebook)
@@ -580,14 +599,13 @@ class App(tk.Tk):
         self.serial_dispositivo_var = tk.StringVar()
         self.serial_dispositivo_combobox = ttk.Combobox(form_frame, textvariable=self.serial_dispositivo_var)
         self.serial_dispositivo_combobox.grid(row=0, column=1, padx=5, pady=5)
+        self.serial_dispositivo_combobox.bind("<<ComboboxSelected>>", self.on_serial_dispositivo_selected)
         self.refresh_serial_dispositivo_combobox()
 
         ttk.Label(form_frame, text="Código Naval Anterior:").grid(row=1, column=0, padx=5, pady=5)
         self.codigo_naval_anterior_var = tk.StringVar()
-        self.codigo_naval_anterior_combobox = ttk.Combobox(form_frame, textvariable=self.codigo_naval_anterior_var)
-        self.codigo_naval_anterior_combobox.grid(row=1, column=1, padx=5, pady=5)
-        self.codigo_naval_anterior_combobox.bind("<<ComboboxSelected>>", self.on_codigo_naval_anterior_selected)
-        self.refresh_codigo_naval_anterior_combobox()
+        self.codigo_naval_anterior_entry = ttk.Entry(form_frame, textvariable=self.codigo_naval_anterior_var, state='readonly')
+        self.codigo_naval_anterior_entry.grid(row=1, column=1, padx=5, pady=5)
 
         ttk.Label(form_frame, text="Código Naval Nuevo:").grid(row=2, column=0, padx=5, pady=5)
         self.codigo_naval_nuevo_var = tk.StringVar()
@@ -622,12 +640,25 @@ class App(tk.Tk):
 
         self.refresh_historico_dispositivos_list()
 
-    def refresh_historico_dispositivos_list(self):
-        for item in self.historico_dispositivos_tree.get_children():
-            self.historico_dispositivos_tree.delete(item)
-        historico_dispositivos = self.data_manager.consultar_historico_dispositivos()
-        for dispositivo in historico_dispositivos:
-            self.historico_dispositivos_tree.insert("", "end", values=dispositivo)
+    def add_historico_dispositivos(self):
+        serial = self.serial_dispositivo_var.get()
+        codigo_naval_anterior = self.codigo_naval_anterior_var.get()
+        codigo_naval_nuevo = self.codigo_naval_nuevo_var.get()
+        fecha_instalacion = self.fecha_instalacion_var.get()
+        fecha_termino = self.fecha_termino_var.get()
+
+        if not serial or not codigo_naval_nuevo or not fecha_instalacion:
+            messagebox.showerror("Error", "Todos los campos son obligatorios")
+            return
+
+        try:
+            self.data_manager.insertar_historico_dispositivos(serial, codigo_naval_anterior, codigo_naval_nuevo, fecha_instalacion, fecha_termino)
+            self.refresh_historico_dispositivos_list()
+            messagebox.showinfo("Éxito", "Histórico de dispositivos agregado correctamente")
+        except Exception as e:
+            logging.error(f"Error al insertar histórico de dispositivos: {e}")
+            messagebox.showerror("Error", f"Error al insertar histórico de dispositivos: {e}")
+
 
     def refresh_serial_dispositivo_combobox(self):
         dispositivos = self.data_manager.consultar_dispositivos()
@@ -656,10 +687,33 @@ class App(tk.Tk):
         codigo_naval_nuevo = self.codigo_naval_nuevo_var.get()
         fecha_instalacion = self.fecha_instalacion_var.get()
         fecha_termino = self.fecha_termino_var.get()
-        if serial and codigo_naval_anterior and codigo_naval_nuevo and fecha_instalacion and fecha_termino:
-            self.data_manager.insert_historico_dispositivos(serial, codigo_naval_anterior, codigo_naval_nuevo, fecha_instalacion, fecha_termino)
-            self.refresh_historico_dispositivos_list()
-        else:
+
+        if not serial or not codigo_naval_nuevo or not fecha_instalacion:
             messagebox.showerror("Error", "Todos los campos son obligatorios")
+            return
+
+        try:
+            self.data_manager.insertar_historico_dispositivos(serial, codigo_naval_anterior, codigo_naval_nuevo, fecha_instalacion, fecha_termino)
+            self.refresh_historico_dispositivos_list()
+            messagebox.showinfo("Éxito", "Histórico de dispositivos agregado correctamente")
+        except Exception as e:
+            logging.error(f"Error al insertar histórico de dispositivos: {e}")
+            messagebox.showerror("Error", f"Error al insertar histórico de dispositivos: {e}")
+
+    def refresh_historico_dispositivos_list(self):
+        try:
+            historico_dispositivos = self.data_manager.consultar_historico_dispositivos()
+            if historico_dispositivos is None:
+                logging.error("No se encontraron movimientos históricos")
+                return
+
+            for i in self.historico_dispositivos_tree.get_children():
+                self.historico_dispositivos_tree.delete(i)
+
+            for dispositivo in historico_dispositivos:
+                self.historico_dispositivos_tree.insert("", "end", values=dispositivo)
+        except Exception as e:
+            logging.error(f"Error al consultar histórico de dispositivos: {e}")
+            print(f"Error al consultar histórico de dispositivos: {e}")
 
 

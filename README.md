@@ -22,23 +22,23 @@
 
 Antes de abrir la aplicación, es necesario realizar una configuración previa para conectarse correctamente a la base de datos. Siga los siguientes pasos:
 
-**Abrir el archivo de configuración:**
+**- Abrir el archivo de configuración:**
 
 Localice el archivo llamado config.txt dentro del repositorio.
 
 Ábralo con cualquier editor de texto de su preferencia (por ejemplo, Notepad, Visual Studio Code, etc.).
 
-**Configurar los datos de la base de datos:**
+**- Configurar los datos de la base de datos:**
 
 En el archivo config.txt, ingrese los datos correspondientes a la base de datos que desea utilizar.
 
 Estos datos incluyen información como el host, el puerto, el nombre de la base de datos, el usuario y la contraseña.
 
-**Guardar y cerrar el archivo:**
+**- Guardar y cerrar el archivo:**
 
 Una vez que haya completado los datos, guarde el archivo y ciérrelo.
 
-**Ejecutar la aplicación:**
+**- Ejecutar la aplicación:**
 
 Después de configurar el archivo, podrá iniciar la aplicación normalmente haciendo doble clic en el archivo main.exe.
 
@@ -46,15 +46,15 @@ Después de configurar el archivo, podrá iniciar la aplicación normalmente hac
 
 Este repositorio contiene todo lo necesario para ejecutar y modificar la aplicación:
 
-**Archivo ejecutable:**
+**- Archivo ejecutable:**
 
 El archivo main.exe permite ejecutar la aplicación sin necesidad de configuraciones adicionales.
 
-**Dependencias:**
+**- Dependencias:**
 
 Todas las dependencias necesarias para la ejecución están incluidas en este repositorio.
 
-**Código fuente:**
+**- Código fuente:**
 
 El código fuente está disponible para que pueda modificar la aplicación según sus necesidades.
 

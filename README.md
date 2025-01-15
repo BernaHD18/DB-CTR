@@ -29,7 +29,7 @@ Histórico de Dispositivos: Permite agregar y consultar históricos de dispositi
 
 ## Instrucciones para configurar y utilizar la aplicación
 
-##Configuración inicial
+## Configuración inicial
 
 Antes de abrir la aplicación, es necesario realizar una configuración previa para conectarse correctamente a la base de datos. Siga los siguientes pasos:
 
@@ -53,7 +53,7 @@ Una vez que haya completado los datos, guarde el archivo y ciérrelo.
 
 Después de configurar el archivo, podrá iniciar la aplicación normalmente haciendo doble clic en el archivo main.exe.
 
-##Estructura del repositorio
+## Estructura del repositorio
 
 Este repositorio contiene todo lo necesario para ejecutar y modificar la aplicación:
 
@@ -69,7 +69,7 @@ Todas las dependencias necesarias para la ejecución están incluidas en este re
 
 El código fuente está disponible para que pueda modificar la aplicación según sus necesidades.
 
-##Explicación de la aplicación
+## Explicación de la aplicación
 
 Esta aplicación consta de 6 pestañas principales para la gestión de diferentes datos:
 

@@ -453,17 +453,16 @@ class DataManager:
     def consultar_codigo_naval_anterior(self, serial):
         try:
             self.connection.cur.execute("""
-                SELECT pd.codigo_naval
-                FROM Ponton_Dispositivos pd
-                WHERE pd.serial_dispositivo = %s
-                LIMIT 1;
+                SELECT codigo_naval 
+                FROM Ponton_Dispositivos 
+                WHERE serial_dispositivo = %s;
             """, (serial,))
-            result = self.connection.cur.fetchone()
-            return result[0] if result else ""
+            resultado = self.connection.cur.fetchone()
+            return resultado[0] if resultado else None
         except Exception as e:
-            logging.error(f"Error al consultar código naval anterior: {e}")
-            return ""
-        
+            logging.error(f"Error al consultar código naval anterior por serial: {e}")
+            return None
+            
     def consultar_codigos_navales_disponibles(self):
         try:
             self.connection.cur.execute("""
@@ -474,4 +473,17 @@ class DataManager:
         except Exception as e:
             logging.error(f"Error al consultar códigos navales disponibles: {e}")
             return []
+        
+    def consultar_centro_por_codigo_naval(self, codigo_naval):
+        try:
+            self.connection.cur.execute("""
+                SELECT Nombre_Centro 
+                FROM Ponton 
+                WHERE Codigo_Naval = %s;
+            """, (codigo_naval,))
+            resultado = self.connection.cur.fetchone()
+            return resultado[0] if resultado else None
+        except Exception as e:
+            logging.error(f"Error al consultar centro por código naval: {e}")
+            return None
 

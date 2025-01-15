@@ -353,6 +353,7 @@ class App(tk.Tk):
             try:
                 self.data_manager.delete_ponton(codigo_naval)
                 self.refresh_ponton_list()
+                self.refresh_nombre_centro_ponton_combobox()  # Actualizar el combobox de nombre de centro en pontones
                 self.refresh_codigo_naval_dispositivos_combobox()  # Actualizar el combobox de código naval en dispositivos
                 self.refresh_codigo_naval_historico_combobox()  # Actualizar el combobox de código naval en histórico de movimientos
                 self.refresh_codigo_naval_anterior_combobox()  # Actualizar el combobox de código naval en histórico de dispositivos
@@ -621,8 +622,8 @@ class App(tk.Tk):
 
         ttk.Label(form_frame, text="Código Naval Anterior:").grid(row=1, column=0, padx=5, pady=5)
         self.codigo_naval_anterior_var = tk.StringVar()
-        self.codigo_naval_anterior_combobox = ttk.Combobox(form_frame, textvariable=self.codigo_naval_anterior_var, state='readonly')
-        self.codigo_naval_anterior_combobox.grid(row=1, column=1, padx=5, pady=5)
+        self.codigo_naval_anterior_entry = ttk.Entry(form_frame, textvariable=self.codigo_naval_anterior_var, state='readonly')
+        self.codigo_naval_anterior_entry.grid(row=1, column=1, padx=5, pady=5)
 
         ttk.Label(form_frame, text="Código Naval Nuevo:").grid(row=2, column=0, padx=5, pady=5)
         self.codigo_naval_nuevo_var = tk.StringVar()
@@ -662,18 +663,17 @@ class App(tk.Tk):
         self.codigo_naval_anterior_var.set(codigo_naval_anterior)
         self.codigo_naval_anterior_entry.config(state='readonly')
 
-        codigos_navales_disponibles = self.data_manager.consultar_codigos_navales_disponibles()
+        codigos_navales_disponibles = self.data_manager.consultar_codigos_navales()
         self.codigo_naval_nuevo_combobox['values'] = [codigo for codigo in codigos_navales_disponibles if codigo != codigo_naval_anterior]
-
+    
     def on_codigo_naval_selected(self, event):
         codigo_naval = self.codigo_naval_historico_var.get()
         centro_anterior = self.data_manager.consultar_centro_por_codigo_naval(codigo_naval)
         self.id_centro_anterior_var.set(centro_anterior)
         self.id_centro_anterior_entry.config(state='readonly')
 
-        centros = self.data_manager.consultar_centros()
-        centros_disponibles = [centro for centro in centros if centro != centro_anterior]
-        self.id_centro_nuevo_combobox['values'] = centros_disponibles
+        centros_disponibles = self.data_manager.consultar_centros()
+        self.id_centro_nuevo_combobox['values'] = [centro for centro in centros_disponibles if centro != centro_anterior]
 
     def refresh_codigo_naval_combobox(self):
         codigos_navales = self.data_manager.consultar_codigos_navales()

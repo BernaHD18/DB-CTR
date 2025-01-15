@@ -1,5 +1,0 @@
-dbname=DB-CTR
-user=postgres
-password=CTR
-host=localhost
-port=5432

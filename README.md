@@ -16,18 +16,7 @@
   - `ctypes`
   - `logging`
   - `tkcalendar`
-
-## Uso 
-
-Interfaz de Usuario
-Empresas: Permite agregar y consultar empresas.
-Ubicaciones: Permite agregar y consultar ubicaciones.
-Pontones: Permite agregar y consultar pontones.
-Dispositivos: Permite agregar y consultar dispositivos.
-Histórico de Movimientos: Permite agregar y consultar históricos de movimientos.
-Histórico de Dispositivos: Permite agregar y consultar históricos de dispositivos.
-
-## Instrucciones para configurar y utilizar la aplicación
+  - 
 
 ## Configuración inicial
 

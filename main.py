@@ -13,14 +13,23 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
     datefmt='%d-%m-%Y %H:%M:%S'
 )
+# Leer configuración de la base de datos desde un archivo
+def read_db_config(filename='config.txt'):
+    config = {}
+    with open(filename, 'r') as file:
+        for line in file:
+            name, value = line.strip().split('=')
+            config[name] = value
+    return config
 
 # Configuración de la conexión
+db_config = read_db_config()
 db = DatabaseConnection(
-    dbname="DB-CTR",
-    user="postgres",
-    password="CTR",
-    host="localhost",
-    port="5432"
+    dbname=db_config['dbname'],
+    user=db_config['user'],
+    password=db_config['password'],
+    host=db_config['host'],
+    port=db_config['port']
 )
 
 try:
@@ -44,7 +53,7 @@ try:
     app = App(data_manager)
     app.iconbitmap('icono.ico')
     app.mainloop()
-
+    
 except ValueError as ve:
     logging.error(f"Error de validación: {ve}")
     print(f"Error de validación: {ve}")

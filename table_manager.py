@@ -118,7 +118,7 @@ class TableManager:
                 Fecha_Instalacion_Dispositivo DATE,
                 Fecha_Termino_Dispositivo DATE,
                 CONSTRAINT FK_Serial FOREIGN KEY (Serial)
-                REFERENCES Dispositivos (Serial),
+                REFERENCES Dispositivos (Serial) ON DELETE NO ACTION,
                 CONSTRAINT FK_ID_Codigo_NavalAnterior FOREIGN KEY (ID_Codigo_NavalAnterior)
                 REFERENCES Ponton (Codigo_Naval),
                 CONSTRAINT FK_ID_Codigo_NavalNuevo FOREIGN KEY (ID_Codigo_NavalNuevo)
@@ -134,14 +134,15 @@ class TableManager:
             self.connection.conn.commit()
         except Exception as e:
             print(f"Error al crear tablas: {e}")
+            self.connection.conn.rollback()
 
     # ...existing code...
 
 
     def alter_tables(self):
         commands = [
-            "ALTER TABLE Ponton ALTER COLUMN Serial_Asistente_Virtual DROP NOT NULL;",
-            "ALTER TABLE Ponton ALTER COLUMN Serial_Camara DROP NOT NULL;",
+            "INSERT INTO Empresa (Nombre_Empresa) VALUES ('Prueba');" # Insertar datos de prueba
+
 
         ]
 

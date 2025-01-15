@@ -1,18 +1,28 @@
 import logging
-from tkinter import messagebox
+import psycopg2
 
 class DataManager:
     def __init__(self, connection):
         self.connection = connection
 
     def insert_empresa(self, nombre_empresa):
+        if not nombre_empresa or nombre_empresa.isspace():
+            raise ValueError("El campo nombre de la empresa es obligatorio")
         try:
-            self.connection.cur.execute("INSERT INTO Empresa (Nombre_Empresa) VALUES (%s);", (nombre_empresa,))
+            # Verificar si la empresa ya existe
+            self.connection.cur.execute("SELECT COUNT(*) FROM Empresa WHERE Nombre_Empresa = %s;", (nombre_empresa,))
+            if self.connection.cur.fetchone()[0] > 0:
+                raise ValueError(f"La empresa '{nombre_empresa}' ya existe")
+            
+            self.connection.cur.execute("""
+                INSERT INTO Empresa (Nombre_Empresa) VALUES (%s);
+            """, (nombre_empresa,))
             self.connection.conn.commit()
             logging.info(f"Empresa '{nombre_empresa}' insertada correctamente")
         except Exception as e:
             logging.error(f"Error al insertar empresa: {e}")
-    
+            self.connection.conn.rollback()
+
     def delete_empresa(self, nombre_empresa):
         try:
             self.connection.cur.execute("DELETE FROM Empresa WHERE Nombre_Empresa = %s;", (nombre_empresa,))
@@ -20,7 +30,51 @@ class DataManager:
             logging.info(f"Empresa '{nombre_empresa}' borrada correctamente")
         except Exception as e:
             logging.error(f"Error al borrar empresa: {e}")
+            self.connection.conn.rollback()
+            raise e
 
+    def delete_dispositivo(self, serial):
+        try:
+            # Obtener el tipo de dispositivo
+            self.connection.cur.execute("SELECT tipo_dispositivo FROM Ponton_Dispositivos WHERE serial_dispositivo = %s;", (serial,))
+            tipo_dispositivo = self.connection.cur.fetchone()
+            
+            if tipo_dispositivo:
+                tipo_dispositivo = tipo_dispositivo[0]
+                # Borrar el dispositivo de su tabla específica
+                if tipo_dispositivo == "NIO":
+                    self.connection.cur.execute("DELETE FROM NIO WHERE Serial = %s;", (serial,))
+                elif tipo_dispositivo == "Radar":
+                    self.connection.cur.execute("DELETE FROM Radar WHERE Serial = %s;", (serial,))
+                elif tipo_dispositivo == "Asistente Virtual":
+                    self.connection.cur.execute("DELETE FROM Asistente_Virtual WHERE Serial = %s;", (serial,))
+                elif tipo_dispositivo == "Cámara":
+                    self.connection.cur.execute("DELETE FROM Camara WHERE Serial = %s;", (serial,))
+
+            # Borrar la relación con el código naval en Ponton_Dispositivos
+            self.connection.cur.execute("DELETE FROM Ponton_Dispositivos WHERE serial_dispositivo = %s;", (serial,))
+            
+            # Obtener el ID de credenciales antes de borrar el dispositivo
+            self.connection.cur.execute("SELECT ID_Credenciales FROM Dispositivos WHERE Serial = %s;", (serial,))
+            id_credenciales = self.connection.cur.fetchone()
+            
+            # Borrar el dispositivo de la tabla Dispositivos
+            self.connection.cur.execute("DELETE FROM Dispositivos WHERE Serial = %s;", (serial,))
+            
+            # Borrar las credenciales asociadas
+            if id_credenciales:
+                self.connection.cur.execute("DELETE FROM Credenciales WHERE ID_Credenciales = %s;", (id_credenciales[0],))
+            
+            self.connection.conn.commit()
+            logging.info(f"Dispositivo '{serial}' borrado correctamente")
+        except psycopg2.errors.ForeignKeyViolation as e:
+            logging.error(f"Error al borrar dispositivo: {e}")
+            self.connection.conn.rollback()
+            raise ValueError(f"No se puede borrar el dispositivo '{serial}' porque está referenciado en otra tabla.")
+        except Exception as e:
+            logging.error(f"Error al borrar dispositivo: {e}")
+            self.connection.conn.rollback()
+            raise e
 
     def insert_ubicacion(self, nombre_centro, grupo_telegram, nombre_empresa):
         try:
@@ -38,8 +92,14 @@ class DataManager:
             self.connection.cur.execute("DELETE FROM Ubicacion WHERE Nombre_Centro = %s;", (nombre_centro,))
             self.connection.conn.commit()
             logging.info(f"Ubicación '{nombre_centro}' borrada correctamente")
+        except psycopg2.errors.ForeignKeyViolation as e:
+            logging.error(f"Error al borrar ubicación: {e}")
+            self.connection.conn.rollback()
+            raise ValueError(f"No se puede borrar la ubicación '{nombre_centro}' porque está referenciada en otra tabla.")
         except Exception as e:
             logging.error(f"Error al borrar ubicación: {e}")
+            self.connection.conn.rollback()
+            raise e
 
     def insert_credenciales(self, usuario, contrasena):
         try:
@@ -77,52 +137,56 @@ class DataManager:
             logging.error(f"Error al insertar dispositivo: {e}")
             self.connection.conn.rollback()
 
-    def insert_nio(self, serial, modelo, direccionamiento_ip, firmware_version, usuario, contrasena):
+    def insert_nio(self, serial, modelo, direccionamiento_ip, firmware_version, usuario, contrasena, codigo_naval_ponton):
         try:
             self.insert_dispositivo(serial, direccionamiento_ip, firmware_version, usuario, contrasena)
             self.connection.cur.execute("""
                 INSERT INTO NIO (Serial, Modelo)
                 VALUES (%s, %s);
             """, (serial, modelo))
+            self.insert_dispositivo_ponton(codigo_naval_ponton, serial, "NIO")
             self.connection.conn.commit()
             logging.info(f"NIO '{serial}' insertado correctamente")
         except Exception as e:
             logging.error(f"Error al insertar NIO: {e}")
             self.connection.conn.rollback()
 
-    def insert_radar(self, serial, canal_rf, direccionamiento_ip, firmware_version, usuario, contrasena):
+    def insert_radar(self, serial, canal_rf, direccionamiento_ip, firmware_version, usuario, contrasena, codigo_naval_ponton):
         try:
             self.insert_dispositivo(serial, direccionamiento_ip, firmware_version, usuario, contrasena)
             self.connection.cur.execute("""
                 INSERT INTO Radar (Serial, Canal_RF)
                 VALUES (%s, %s);
             """, (serial, canal_rf))
+            self.insert_dispositivo_ponton(codigo_naval_ponton, serial, "Radar")
             self.connection.conn.commit()
             logging.info(f"Radar '{serial}' insertado correctamente")
         except Exception as e:
             logging.error(f"Error al insertar Radar: {e}")
             self.connection.conn.rollback()
 
-    def insert_asistente_virtual(self, serial, direccionamiento_ip, firmware_version, usuario, contrasena):
+    def insert_asistente_virtual(self, serial, direccionamiento_ip, firmware_version, usuario, contrasena, codigo_naval_ponton):
         try:
             self.insert_dispositivo(serial, direccionamiento_ip, firmware_version, usuario, contrasena)
             self.connection.cur.execute("""
                 INSERT INTO Asistente_Virtual (Serial)
                 VALUES (%s);
             """, (serial,))
+            self.insert_dispositivo_ponton(codigo_naval_ponton, serial, "Asistente Virtual")
             self.connection.conn.commit()
             logging.info(f"Asistente Virtual '{serial}' insertado correctamente")
         except Exception as e:
             logging.error(f"Error al insertar Asistente Virtual: {e}")
             self.connection.conn.rollback()
 
-    def insert_camara(self, serial, direccionamiento_ip, firmware_version, usuario, contrasena):
+    def insert_camara(self, serial, direccionamiento_ip, firmware_version, usuario, contrasena, codigo_naval_ponton):
         try:
             self.insert_dispositivo(serial, direccionamiento_ip, firmware_version, usuario, contrasena)
             self.connection.cur.execute("""
                 INSERT INTO Camara (Serial)
                 VALUES (%s);
             """, (serial,))
+            self.insert_dispositivo_ponton(codigo_naval_ponton, serial, "Cámara")
             self.connection.conn.commit()
             logging.info(f"Cámara '{serial}' insertada correctamente")
         except Exception as e:
@@ -156,21 +220,30 @@ class DataManager:
 
     def consultar_centros(self):
         try:
-            self.connection.cur.execute("SELECT Nombre_Centro FROM Ubicacion;")
+            self.connection.cur.execute("""
+                SELECT Nombre_Centro 
+                FROM Ubicacion 
+                WHERE Nombre_Centro NOT IN (SELECT Nombre_Centro FROM Ponton);
+            """)
             centros = self.connection.cur.fetchall()
             return [centro[0] for centro in centros] if centros else []
         except Exception as e:
             logging.error(f"Error al consultar centros: {e}")
             return []
         
-    def consultar_codigos_navales(self):
+    def delete_ponton(self, codigo_naval):
         try:
-            self.connection.cur.execute("SELECT Codigo_Naval FROM Ponton;")
-            codigos_navales = self.connection.cur.fetchall()
-            return [codigo[0] for codigo in codigos_navales] if codigos_navales else []
+            self.connection.cur.execute("DELETE FROM Ponton WHERE Codigo_Naval = %s;", (codigo_naval,))
+            self.connection.conn.commit()
+            logging.info(f"Pontón '{codigo_naval}' borrado correctamente")
+        except psycopg2.errors.ForeignKeyViolation as e:
+            logging.error(f"Error al borrar pontón: {e}")
+            self.connection.conn.rollback()
+            raise ValueError(f"No se puede borrar el pontón '{codigo_naval}' porque está referenciado en otra tabla.")
         except Exception as e:
-            logging.error(f"Error al consultar códigos navales: {e}")
-            return []
+            logging.error(f"Error al borrar pontón: {e}")
+            self.connection.conn.rollback()
+            raise e
     
     def delete_ponton(self, codigo_naval):
         try:
@@ -193,28 +266,25 @@ class DataManager:
             logging.error(f"Error al asociar dispositivo al pontón: {e}")
             self.connection.conn.rollback()
 
-
-
-    def insert_historico_movimientos(self, codigo_naval, centro_anterior, centro_nuevo, fecha_instalacion, fecha_termino):
+    def insert_historico_movimientos(self, codigo_naval, id_centro_anterior, id_centro_nuevo, fecha_instalacion_centro, fecha_termino_centro):
         try:
+            # Insertar en la tabla Historico_Movimientos
             self.connection.cur.execute("""
                 INSERT INTO Historico_Movimientos (Codigo_Naval, ID_CentroAnterior, ID_CentroNuevo, Fecha_Instalacion_Centro, Fecha_Termino_Centro)
                 VALUES (%s, %s, %s, %s, %s);
-            """, (codigo_naval, centro_anterior, centro_nuevo, fecha_instalacion, fecha_termino))
+            """, (codigo_naval, id_centro_anterior, id_centro_nuevo, fecha_instalacion_centro, fecha_termino_centro))
             
             # Actualizar la tabla Ponton con la nueva ubicación
             self.connection.cur.execute("""
                 UPDATE Ponton
                 SET Nombre_Centro = %s
                 WHERE Codigo_Naval = %s;
-            """, (centro_nuevo, codigo_naval))
+            """, (id_centro_nuevo, codigo_naval))
             
             self.connection.conn.commit()
-            logging.info("Histórico de movimientos insertado y pontón actualizado correctamente")
+            print("Histórico de movimientos insertado y pontón actualizado correctamente")
         except Exception as e:
-            logging.error(f"Error al insertar histórico de movimientos y actualizar pontón: {e}")
-            self.connection.conn.rollback()
-
+            print(f"Error al insertar histórico de movimientos y actualizar pontón: {e}")
 
     def insert_historico_dispositivos(self, serial, id_codigo_naval_anterior, id_codigo_naval_nuevo, fecha_instalacion_dispositivo, fecha_termino_dispositivo):
         try:
@@ -224,24 +294,23 @@ class DataManager:
                 VALUES (%s, %s, %s, %s, %s);
             """, (serial, id_codigo_naval_anterior, id_codigo_naval_nuevo, fecha_instalacion_dispositivo, fecha_termino_dispositivo))
             
-            # Actualizar la tabla Dispositivos con la nueva ubicación
+            # Actualizar la tabla Ponton_Dispositivos con la nueva ubicación
             self.connection.cur.execute("""
-                UPDATE Dispositivos
-                SET ID_Codigo_Naval = %s
-                WHERE Serial = %s;
+                UPDATE Ponton_Dispositivos
+                SET codigo_naval = %s
+                WHERE serial_dispositivo = %s;
             """, (id_codigo_naval_nuevo, serial))
             
             self.connection.conn.commit()
             print("Histórico de dispositivos insertado y dispositivo actualizado correctamente")
         except Exception as e:
             print(f"Error al insertar histórico de dispositivos y actualizar dispositivo: {e}")
-
+            self.connection.conn.rollback()
 
     def consultar_empresas(self):
         try:
             self.connection.cur.execute("SELECT Nombre_Empresa FROM Empresa;")
-            resultados = self.connection.cur.fetchall()
-            return resultados
+            return self.connection.cur.fetchall()
         except Exception as e:
             logging.error(f"Error al consultar empresas: {e}")
             return []
@@ -266,50 +335,23 @@ class DataManager:
     def consultar_dispositivos(self):
         try:
             self.connection.cur.execute("""
-                SELECT d.Serial, pd.codigo_naval, d.Direccionamiento_IP, d.Firmware_Version, d.ID_Credenciales, pd.tipo_dispositivo
+                SELECT d.Serial, pd.codigo_naval, d.Direccionamiento_IP, d.Firmware_Version, pd.tipo_dispositivo, d.ID_Credenciales
                 FROM Dispositivos d
-                JOIN Ponton_Dispositivos pd ON d.Serial = pd.serial_dispositivo;
+                JOIN Credenciales c ON d.ID_Credenciales = c.ID_Credenciales
+                LEFT JOIN Ponton_Dispositivos pd ON d.Serial = pd.serial_dispositivo;
             """)
             dispositivos = self.connection.cur.fetchall()
             return dispositivos if dispositivos else []
         except Exception as e:
             logging.error(f"Error al consultar dispositivos: {e}")
             return []
-
-    def add_historico_dispositivos(self):
-        serial = self.serial_dispositivo_var.get()
-        codigo_naval_anterior = self.codigo_naval_anterior_var.get()
-        codigo_naval_nuevo = self.codigo_naval_nuevo_var.get()
-        fecha_instalacion = self.fecha_instalacion_var.get()
-        fecha_termino = self.fecha_termino_var.get()
-
-        if not serial or not codigo_naval_nuevo or not fecha_instalacion:
-            messagebox.showerror("Error", "Todos los campos son obligatorios")
-            return
-
-        try:
-            self.data_manager.insertar_historico_dispositivos(serial, codigo_naval_anterior, codigo_naval_nuevo, fecha_instalacion, fecha_termino)
-            self.refresh_historico_dispositivos_list()
-            messagebox.showinfo("Éxito", "Histórico de dispositivos agregado correctamente")
-        except Exception as e:
-            logging.error(f"Error al insertar histórico de dispositivos: {e}")
-            messagebox.showerror("Error", f"Error al insertar histórico de dispositivos: {e}")
-
-    def insertar_historico_dispositivos(self, serial, codigo_naval_anterior, codigo_naval_nuevo, fecha_instalacion, fecha_termino):
-        try:
-            self.connection.cur.execute("""
-                INSERT INTO Historico_Dispositivos (Serial, Codigo_Naval_Anterior, Codigo_Naval_Nuevo, Fecha_Instalacion_Dispositivo, Fecha_Termino_Dispositivo)
-                VALUES (%s, %s, %s, %s, %s);
-            """, (serial, codigo_naval_anterior, codigo_naval_nuevo, fecha_instalacion, fecha_termino))
-            self.connection.conn.commit()
-        except Exception as e:
-            logging.error(f"Error al insertar histórico de dispositivos: {e}")
-            self.connection.conn.rollback()
-            raise
         
     def consultar_historico_movimientos(self):
         try:
-            self.connection.cur.execute("SELECT Codigo_Naval, ID_CentroAnterior, ID_CentroNuevo, Fecha_Instalacion_Centro, Fecha_Termino_Centro FROM Historico_Movimientos;")
+            self.connection.cur.execute("""
+                SELECT Codigo_Naval, ID_CentroAnterior, ID_CentroNuevo, Fecha_Instalacion_Centro, Fecha_Termino_Centro 
+                FROM Historico_Movimientos;
+            """)
             resultados = self.connection.cur.fetchall()
             return resultados if resultados else []
         except Exception as e:
@@ -319,13 +361,14 @@ class DataManager:
     def consultar_historico_dispositivos(self):
         try:
             self.connection.cur.execute("""
-                SELECT Serial, Codigo_Naval_Anterior, Codigo_Naval_Nuevo, Fecha_Instalacion_Dispositivo, Fecha_Termino_Dispositivo
+                SELECT Serial, ID_Codigo_NavalAnterior, ID_Codigo_NavalNuevo, Fecha_Instalacion_Dispositivo, Fecha_Termino_Dispositivo 
                 FROM Historico_Dispositivos;
             """)
-            return self.connection.cur.fetchall()
+            resultados = self.connection.cur.fetchall()
+            return resultados if resultados else []
         except Exception as e:
-            logging.error(f"Error al consultar histórico de dispositivos: {e}")
-            return None
+            print(f"Error al consultar histórico de dispositivos: {e}")
+            return []
 
     def consultar_dispositivos_ponton(self, codigo_naval):
         try:
@@ -385,4 +428,50 @@ class DataManager:
             return value == "true"
         return value
 
+    def consultar_codigos_navales(self):
+        try:
+            self.connection.cur.execute("SELECT Codigo_Naval FROM Ponton;")
+            codigos_navales = self.connection.cur.fetchall()
+            return [codigo[0] for codigo in codigos_navales] if codigos_navales else []
+        except Exception as e:
+            logging.error(f"Error al consultar códigos navales: {e}")
+            return []   
+    
+    def consultar_codigo_naval_por_serial(self, serial):
+        try:
+            self.connection.cur.execute("""
+                SELECT codigo_naval 
+                FROM Ponton_Dispositivos 
+                WHERE serial_dispositivo = %s;
+            """, (serial,))
+            resultado = self.connection.cur.fetchone()
+            return resultado[0] if resultado else None
+        except Exception as e:
+            logging.error(f"Error al consultar código naval por serial: {e}")
+            return None
+        
+    def consultar_codigo_naval_anterior(self, serial):
+        try:
+            self.connection.cur.execute("""
+                SELECT pd.codigo_naval
+                FROM Ponton_Dispositivos pd
+                WHERE pd.serial_dispositivo = %s
+                LIMIT 1;
+            """, (serial,))
+            result = self.connection.cur.fetchone()
+            return result[0] if result else ""
+        except Exception as e:
+            logging.error(f"Error al consultar código naval anterior: {e}")
+            return ""
+        
+    def consultar_codigos_navales_disponibles(self):
+        try:
+            self.connection.cur.execute("""
+                SELECT codigo_naval
+                FROM Ponton;
+            """)
+            return [row[0] for row in self.connection.cur.fetchall()]
+        except Exception as e:
+            logging.error(f"Error al consultar códigos navales disponibles: {e}")
+            return []
 

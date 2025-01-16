@@ -16,7 +16,6 @@
   - `ctypes`
   - `logging`
   - `tkcalendar`
-  - 
 
 ## Configuración inicial
 
@@ -72,11 +71,11 @@ Puede agregar y eliminar empresas desde esta pestaña.
 
 Se gestionan los centros con los siguientes datos:
 
-Nombre del centro.
+- Nombre del centro.
 
-Grupo de Telegram asociado.
+- Grupo de Telegram asociado.
 
-Empresa vinculada.
+- Empresa vinculada.
 
 Puede agregar y eliminar ubicaciones desde esta pestaña.
 
@@ -107,5 +106,3 @@ Almacena los cambios de ubicación de los pontones hacia otros centros, incluyen
 **6. Historial de Dispositivos**
 
 Registra cualquier cambio de dispositivos entre diferentes pontones, almacenando la fecha del movimiento.
-
-Con esta aplicación, podrá gestionar de manera eficiente las empresas, ubicaciones, pontones, dispositivos y sus respectivos historiales. 

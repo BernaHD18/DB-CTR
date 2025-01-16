@@ -50,7 +50,7 @@ try:
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
     # Creación y uso de la interfaz gráfica
-    app = App(data_manager)
+    app = App(data_manager, table_manager)
     app.iconbitmap('icono.ico')
     app.mainloop()
     
@@ -60,7 +60,6 @@ except ValueError as ve:
 except Exception as e:
     logging.error(f"Error en la aplicación: {e}\n{traceback.format_exc()}")
     print(f"Error en la aplicación: {e}\n{traceback.format_exc()}")
-
 
 finally:
     db.close()

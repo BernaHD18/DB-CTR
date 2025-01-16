@@ -12,16 +12,21 @@ class DataManager:
             # Verificar si la empresa ya existe
             self.connection.cur.execute("SELECT COUNT(*) FROM Empresa WHERE Nombre_Empresa = %s;", (nombre_empresa,))
             if self.connection.cur.fetchone()[0] > 0:
-                raise ValueError(f"La empresa '{nombre_empresa}' ya existe")
+                raise ValueError(f"La empresa '{nombre_empresa}' ya existe.")
             
             self.connection.cur.execute("""
                 INSERT INTO Empresa (Nombre_Empresa) VALUES (%s);
             """, (nombre_empresa,))
             self.connection.conn.commit()
             logging.info(f"Empresa '{nombre_empresa}' insertada correctamente")
+        except ValueError as ve:
+            logging.error(f"Error al insertar empresa: {ve}")
+            self.connection.conn.rollback()
+            raise ve
         except Exception as e:
             logging.error(f"Error al insertar empresa: {e}")
             self.connection.conn.rollback()
+            raise e
 
     def delete_empresa(self, nombre_empresa):
         try:
@@ -83,9 +88,15 @@ class DataManager:
                 VALUES (%s, %s, %s);
             """, (nombre_centro, grupo_telegram, nombre_empresa))
             self.connection.conn.commit()
-            print(f"Ubicación '{nombre_centro}' insertada correctamente")
+            logging.info(f"Ubicación '{nombre_centro}' insertada correctamente")
+        except psycopg2.errors.UniqueViolation as e:
+            logging.error(f"Error al insertar ubicación: {e}")
+            self.connection.conn.rollback()
+            raise ValueError(f"La ubicación con nombre de centro '{nombre_centro}' ya existe.")
         except Exception as e:
-            print(f"Error al insertar ubicación: {e}")
+            logging.error(f"Error al insertar ubicación: {e}")
+            self.connection.conn.rollback()
+            raise e
 
     def delete_ubicacion(self, nombre_centro):
         try:
@@ -133,37 +144,44 @@ class DataManager:
             """, (serial, direccionamiento_ip, firmware, id_credenciales))
             self.connection.conn.commit()
             logging.info(f"Dispositivo '{serial}' insertado correctamente")
+        except psycopg2.errors.UniqueViolation as e:
+            logging.error(f"Error al insertar dispositivo: {e}")
+            self.connection.conn.rollback()
+            raise ValueError(f"El dispositivo con serial '{serial}' ya existe.")
         except Exception as e:
             logging.error(f"Error al insertar dispositivo: {e}")
             self.connection.conn.rollback()
-
-    def insert_nio(self, serial, modelo, direccionamiento_ip, firmware_version, usuario, contrasena, codigo_naval_ponton):
+            raise e
+        
+    def insert_nio(self, serial, direccionamiento_ip, firmware_version, usuario, contrasena, codigo_naval_ponton):
         try:
             self.insert_dispositivo(serial, direccionamiento_ip, firmware_version, usuario, contrasena)
             self.connection.cur.execute("""
                 INSERT INTO NIO (Serial, Modelo)
                 VALUES (%s, %s);
-            """, (serial, modelo))
+            """, (serial, "Modelo NIO"))
             self.insert_dispositivo_ponton(codigo_naval_ponton, serial, "NIO")
             self.connection.conn.commit()
             logging.info(f"NIO '{serial}' insertado correctamente")
         except Exception as e:
             logging.error(f"Error al insertar NIO: {e}")
             self.connection.conn.rollback()
+            raise e
 
-    def insert_radar(self, serial, canal_rf, direccionamiento_ip, firmware_version, usuario, contrasena, codigo_naval_ponton):
+    def insert_radar(self, serial, direccionamiento_ip, firmware_version, usuario, contrasena, codigo_naval_ponton):
         try:
             self.insert_dispositivo(serial, direccionamiento_ip, firmware_version, usuario, contrasena)
             self.connection.cur.execute("""
                 INSERT INTO Radar (Serial, Canal_RF)
                 VALUES (%s, %s);
-            """, (serial, canal_rf))
+            """, (serial, "Canal RF"))
             self.insert_dispositivo_ponton(codigo_naval_ponton, serial, "Radar")
             self.connection.conn.commit()
             logging.info(f"Radar '{serial}' insertado correctamente")
         except Exception as e:
             logging.error(f"Error al insertar Radar: {e}")
             self.connection.conn.rollback()
+            raise e
 
     def insert_asistente_virtual(self, serial, direccionamiento_ip, firmware_version, usuario, contrasena, codigo_naval_ponton):
         try:
@@ -178,6 +196,7 @@ class DataManager:
         except Exception as e:
             logging.error(f"Error al insertar Asistente Virtual: {e}")
             self.connection.conn.rollback()
+            raise e
 
     def insert_camara(self, serial, direccionamiento_ip, firmware_version, usuario, contrasena, codigo_naval_ponton):
         try:
@@ -192,6 +211,7 @@ class DataManager:
         except Exception as e:
             logging.error(f"Error al insertar Cámara: {e}")
             self.connection.conn.rollback()
+            raise e
 
     def insert_ponton(self, codigo_naval, nombre_centro, estado, ia, observaciones):
         try:
@@ -214,9 +234,14 @@ class DataManager:
             """, (codigo_naval, nombre_centro, estado, ia, observaciones))
             self.connection.conn.commit()
             logging.info(f"Pontón '{codigo_naval}' insertado correctamente")
+        except psycopg2.errors.UniqueViolation as e:
+            logging.error(f"Error al insertar pontón: {e}")
+            self.connection.conn.rollback()
+            raise ValueError(f"El pontón con código naval '{codigo_naval}' ya existe.")
         except Exception as e:
             logging.error(f"Error al insertar pontón: {e}")
             self.connection.conn.rollback()
+            raise e
 
     def consultar_centros(self):
         try:
@@ -268,6 +293,12 @@ class DataManager:
 
     def insert_historico_movimientos(self, codigo_naval, id_centro_anterior, id_centro_nuevo, fecha_instalacion_centro, fecha_termino_centro):
         try:
+            # Verificar si el centro nuevo ya está asociado a otro pontón
+            self.connection.cur.execute("SELECT Codigo_Naval FROM Ponton WHERE Nombre_Centro = %s;", (id_centro_nuevo,))
+            resultado = self.connection.cur.fetchone()
+            if resultado and resultado[0] != codigo_naval:
+                raise ValueError(f"El centro '{id_centro_nuevo}' ya está asociado al pontón '{resultado[0]}'")
+
             # Insertar en la tabla Historico_Movimientos
             self.connection.cur.execute("""
                 INSERT INTO Historico_Movimientos (Codigo_Naval, ID_CentroAnterior, ID_CentroNuevo, Fecha_Instalacion_Centro, Fecha_Termino_Centro)
@@ -282,12 +313,24 @@ class DataManager:
             """, (id_centro_nuevo, codigo_naval))
             
             self.connection.conn.commit()
-            print("Histórico de movimientos insertado y pontón actualizado correctamente")
+            logging.info("Histórico de movimientos insertado y pontón actualizado correctamente")
+        except ValueError as ve:
+            logging.error(f"Error al insertar histórico de movimientos: {ve}")
+            self.connection.conn.rollback()
+            raise ve
         except Exception as e:
-            print(f"Error al insertar histórico de movimientos y actualizar pontón: {e}")
+            logging.error(f"Error al insertar histórico de movimientos: {e}")
+            self.connection.conn.rollback()
+            raise e
 
     def insert_historico_dispositivos(self, serial, id_codigo_naval_anterior, id_codigo_naval_nuevo, fecha_instalacion_dispositivo, fecha_termino_dispositivo):
         try:
+            # Verificar si el dispositivo ya está asociado a otro código naval
+            self.connection.cur.execute("SELECT codigo_naval FROM Ponton_Dispositivos WHERE serial_dispositivo = %s;", (serial,))
+            resultado = self.connection.cur.fetchone()
+            if resultado and resultado[0] != id_codigo_naval_anterior:
+                raise ValueError(f"El dispositivo '{serial}' ya está asociado al código naval '{resultado[0]}'")
+
             # Insertar en la tabla Historico_Dispositivos
             self.connection.cur.execute("""
                 INSERT INTO Historico_Dispositivos (Serial, ID_Codigo_NavalAnterior, ID_Codigo_NavalNuevo, Fecha_Instalacion_Dispositivo, Fecha_Termino_Dispositivo)
@@ -302,10 +345,15 @@ class DataManager:
             """, (id_codigo_naval_nuevo, serial))
             
             self.connection.conn.commit()
-            print("Histórico de dispositivos insertado y dispositivo actualizado correctamente")
-        except Exception as e:
-            print(f"Error al insertar histórico de dispositivos y actualizar dispositivo: {e}")
+            logging.info("Histórico de dispositivos insertado y dispositivo actualizado correctamente")
+        except ValueError as ve:
+            logging.error(f"Error al insertar histórico de dispositivos: {ve}")
             self.connection.conn.rollback()
+            raise ve
+        except Exception as e:
+            logging.error(f"Error al insertar histórico de dispositivos: {e}")
+            self.connection.conn.rollback()
+            raise e
 
     def consultar_empresas(self):
         try:

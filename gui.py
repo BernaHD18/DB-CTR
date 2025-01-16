@@ -7,9 +7,10 @@ from datetime import datetime
 
 
 class App(tk.Tk):
-    def __init__(self, data_manager):
+    def __init__(self, data_manager, table_manager):
         super().__init__()
         self.data_manager = data_manager
+        self.table_manager = table_manager
         self.title("Gestión de Base de Datos")
         self.geometry("1300x600")
 
@@ -27,6 +28,8 @@ class App(tk.Tk):
         self.create_tab_dispositivos()
         self.create_tab_historico_movimientos()
         self.create_tab_historico_dispositivos()
+        self.clear_historico_dispositivos_fields()
+        self.clear_historico_movimientos_fields()
 
     def apply_styles(self):
         style = ttk.Style(self)
@@ -43,12 +46,57 @@ class App(tk.Tk):
         menubar.add_cascade(label="Archivo", menu=file_menu)
         file_menu.add_command(label="Salir", command=self.quit)
 
+        # Gestión de Tablas
+        table_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Gestión de Tablas", menu=table_menu)
+        table_menu.add_command(label="Crear Tablas", command=self.confirm_create_tables)
+
         help_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Ayuda", menu=help_menu)
         help_menu.add_command(label="Acerca de", command=self.show_about)
 
+
     def show_about(self):
         messagebox.showinfo("Acerca de", "Gestión de Base de Datos\nVersión 1.0")
+
+    def confirm_create_tables(self):
+        confirm = messagebox.askyesno("Confirmar", "¿Está seguro de que desea borrar todas las tablas y generar nuevas? Haciendo esto perderá toda la información ya ingresada.")
+        if confirm:
+            self.table_manager.create_tables()
+            self.clear_dispositivo_fields()
+            self.clear_ponton_fields()
+            self.clear_ubicacion_fields()
+            self.clear_empresa_fields()
+            self.clear_historico_dispositivos_fields()
+            self.clear_historico_movimientos_fields()
+            messagebox.showinfo("Éxito", "Tablas creadas correctamente")
+            
+            if hasattr(self, 'refresh_ponton_list'):
+                self.refresh_ponton_list()
+            if hasattr(self, 'refresh_empresa_list'):
+                self.refresh_empresa_list()
+            if hasattr(self, 'refresh_dispositivo_list'):
+                self.refresh_dispositivo_list()
+            if hasattr(self, 'refresh_historico_dispositivos_list'):
+                self.refresh_historico_dispositivos_list()
+            if hasattr(self, 'refresh_historico_movimientos_list'):
+                self.refresh_historico_movimientos_list()
+            if hasattr(self, 'refresh_ubicacion_list'):
+                self.refresh_ubicacion_list()
+            if hasattr(self, 'refresh_nombre_centro_ponton_combobox'):
+                self.refresh_nombre_centro_ponton_combobox()
+            if hasattr(self, 'refresh_nombre_empresa_combobox'):
+                self.refresh_nombre_empresa_combobox()
+            if hasattr(self, 'refresh_id_centro_anterior_combobox'):
+                self.refresh_id_centro_anterior_combobox()
+            if hasattr(self, 'refresh_id_centro_nuevo_combobox'):
+                self.refresh_id_centro_nuevo_combobox()
+            if hasattr(self, 'refresh_codigo_naval_anterior_combobox'):
+                self.refresh_codigo_naval_anterior_combobox()
+            if hasattr(self, 'refresh_codigo_naval_dispositivos_combobox'):
+                self.refresh_codigo_naval_dispositivos_combobox()
+        else:
+            messagebox.showinfo("Información", "Operación cancelada")
 
     def create_tab_empresas(self):
         tab = ttk.Frame(self.notebook)
@@ -95,8 +143,6 @@ class App(tk.Tk):
         if empresas:
             for empresa in empresas:
                 self.empresa_tree.insert("", "end", values=(empresa[0],))
-        else:
-            messagebox.showerror("Error", "Error al consultar empresas")
 
     def add_empresa(self):
         # Obtener el valor directamente desde el Entry
@@ -110,12 +156,14 @@ class App(tk.Tk):
         # Intentar insertar el valor en la base de datos
         try:
             self.data_manager.insert_empresa(nombre_empresa)
-            self.refresh_empresa_list()  # Actualizar la lista de empresas en la interfaz
-            self.refresh_nombre_empresa_combobox()  # Actualizar el combobox de nombre de empresa en ubicaciones
+            self.refresh_empresa_list()
+            self.refresh_nombre_empresa_combobox()
+            self.clear_empresa_fields()
+            messagebox.showinfo("Éxito", f"Empresa '{nombre_empresa}' insertada correctamente")
         except ValueError as ve:
-            messagebox.showerror("Error", str(ve))  # Error por campo vacío o similar
+            messagebox.showerror("Error", str(ve))
         except Exception as e:
-            messagebox.showerror("Error", f"Error al insertar empresa: {e}")  # Otros errores
+            messagebox.showerror("Error", f"Error al insertar empresa: {e}")
 
     def delete_empresa(self):
         # Obtener la selección del usuario
@@ -195,6 +243,7 @@ class App(tk.Tk):
                 self.refresh_nombre_centro_ponton_combobox()
                 self.refresh_id_centro_anterior_combobox()
                 self.refresh_id_centro_nuevo_combobox()
+                messagebox.showinfo("Éxito", f"La ubicacion '{nombre_centro}' fue borrada exitosamente")
             except ValueError as ve:
                 messagebox.showerror("Error", str(ve))
             except Exception as e:
@@ -227,10 +276,13 @@ class App(tk.Tk):
         try:
             self.data_manager.insert_ubicacion(nombre_centro, grupo_telegram, nombre_empresa)
             self.refresh_ubicacion_list()
-            self.refresh_id_centro_anterior_combobox()  # Actualizar el combobox de ID centro en histórico de movimientos
-            self.refresh_id_centro_nuevo_combobox()  # Actualizar el combobox de ID centro en histórico de movimientos
-            self.refresh_nombre_centro_ponton_combobox()  # Actualizar el combobox de nombre de centro en pontones
+            self.refresh_id_centro_anterior_combobox()
+            self.refresh_id_centro_nuevo_combobox()
+            self.refresh_nombre_centro_ponton_combobox()
+            self.clear_ubicacion_fields()
             messagebox.showinfo("Éxito", f"Ubicación '{nombre_centro}' insertada correctamente")
+        except ValueError as ve:
+            messagebox.showerror("Error", str(ve))
         except Exception as e:
             messagebox.showerror("Error", f"Error al insertar ubicación: {e}")
 
@@ -330,12 +382,15 @@ class App(tk.Tk):
         if not codigo_naval or not nombre_centro or not ia:
             messagebox.showerror("Error", "Todos los campos son obligatorios")
             return
+
         try:
             self.data_manager.insert_ponton(codigo_naval, nombre_centro, estado, ia, observaciones)
             self.refresh_ponton_list()
             self.refresh_codigo_naval_dispositivos_combobox()
             self.refresh_codigo_naval_historico_combobox()
             self.refresh_nombre_centro_ponton_combobox()
+            self.refresh_codigo_naval_nuevo_combobox()
+            self.clear_ponton_fields()
             messagebox.showinfo("Éxito", f"Pontón '{codigo_naval}' insertado correctamente")
         except ValueError as ve:
             messagebox.showerror("Error", str(ve))
@@ -353,10 +408,10 @@ class App(tk.Tk):
             try:
                 self.data_manager.delete_ponton(codigo_naval)
                 self.refresh_ponton_list()
-                self.refresh_nombre_centro_ponton_combobox()  # Actualizar el combobox de nombre de centro en pontones
-                self.refresh_codigo_naval_dispositivos_combobox()  # Actualizar el combobox de código naval en dispositivos
-                self.refresh_codigo_naval_historico_combobox()  # Actualizar el combobox de código naval en histórico de movimientos
-                self.refresh_codigo_naval_anterior_combobox()  # Actualizar el combobox de código naval en histórico de dispositivos
+                self.refresh_codigo_naval_dispositivos_combobox()
+                self.refresh_codigo_naval_historico_combobox()
+                self.refresh_nombre_centro_ponton_combobox()
+                messagebox.showinfo("Éxito", f"Pontón '{codigo_naval}' borrado correctamente")
             except ValueError as ve:
                 messagebox.showerror("Error", str(ve))
             except Exception as e:
@@ -442,6 +497,7 @@ class App(tk.Tk):
             try:
                 self.data_manager.delete_dispositivo(serial)
                 self.refresh_dispositivo_list()
+                messagebox.showinfo("Éxito", f"Dispositivo '{serial}' borrado correctamente")
             except ValueError as ve:
                 messagebox.showerror("Error", str(ve))
             except Exception as e:
@@ -495,31 +551,34 @@ class App(tk.Tk):
         usuario = self.usuario_entry.get().strip()
         contrasena = self.contrasena_entry.get().strip()
         tipo_dispositivo = self.tipo_dispositivo_combobox.get().strip()
-        codigo_naval_ponton = self.codigo_naval_dispositivo_combobox.get().strip()
+        codigo_naval = self.codigo_naval_dispositivo_combobox.get().strip()
 
-        if serial and direccionamiento_ip and firmware_version and usuario and contrasena and tipo_dispositivo and codigo_naval_ponton:
-            try:
-                if tipo_dispositivo == "NIO":
-                    modelo = self.modelo_combobox.get().strip()
-                    self.data_manager.insert_nio(serial, modelo, direccionamiento_ip, firmware_version, usuario, contrasena, codigo_naval_ponton)
-                elif tipo_dispositivo == "Radar":
-                    canal_rf = self.canal_rf_entry.get().strip()
-                    self.data_manager.insert_radar(serial, canal_rf, direccionamiento_ip, firmware_version, usuario, contrasena, codigo_naval_ponton)
-                elif tipo_dispositivo == "Asistente Virtual":
-                    self.data_manager.insert_asistente_virtual(serial, direccionamiento_ip, firmware_version, usuario, contrasena, codigo_naval_ponton)
-                elif tipo_dispositivo == "Cámara":
-                    self.data_manager.insert_camara(serial, direccionamiento_ip, firmware_version, usuario, contrasena, codigo_naval_ponton)
-                self.refresh_dispositivo_list()
-            except ValueError as ve:
-                messagebox.showerror("Error", str(ve))
-            except Exception as e:
-                messagebox.showerror("Error", f"Error al insertar dispositivo: {e}")
-        else:
+        if not serial or not direccionamiento_ip or not usuario or not contrasena or not tipo_dispositivo or not codigo_naval:
             messagebox.showerror("Error", "Todos los campos son obligatorios")
+            return
+
+        try:
+            if tipo_dispositivo == "NIO":
+                self.data_manager.insert_nio(serial, direccionamiento_ip, firmware_version, usuario, contrasena, codigo_naval)
+            elif tipo_dispositivo == "Radar":
+                self.data_manager.insert_radar(serial, direccionamiento_ip, firmware_version, usuario, contrasena, codigo_naval)
+            elif tipo_dispositivo == "Asistente Virtual":
+                self.data_manager.insert_asistente_virtual(serial, direccionamiento_ip, firmware_version, usuario, contrasena, codigo_naval)
+            elif tipo_dispositivo == "Cámara":
+                self.data_manager.insert_camara(serial, direccionamiento_ip, firmware_version, usuario, contrasena, codigo_naval)
+            
+            self.refresh_dispositivo_list()
+            self.refresh_serial_dispositivo_combobox()
+            self.clear_dispositivo_fields()
+            messagebox.showinfo("Éxito", f"Dispositivo '{serial}' insertado correctamente")
+        except ValueError as ve:
+            messagebox.showerror("Error", str(ve))
+        except Exception as e:
+            messagebox.showerror("Error", f"Error al insertar dispositivo: {e}")
 
     def create_tab_historico_movimientos(self):
         tab = ttk.Frame(self.notebook)
-        self.notebook.add(tab, text="Histórico Movimientos")
+        self.notebook.add(tab, text="Movimiento Pontones")
 
         form_frame = ttk.LabelFrame(tab, text="Agregar Histórico de Movimientos")
         form_frame.pack(padx=10, pady=10, fill="x")
@@ -543,14 +602,14 @@ class App(tk.Tk):
         self.refresh_id_centro_nuevo_combobox()
 
         ttk.Label(form_frame, text="Fecha de Instalación:").grid(row=3, column=0, padx=5, pady=5)
-        self.fecha_instalacion_var = tk.StringVar()
-        self.fecha_instalacion_entry = DateEntry(form_frame, textvariable=self.fecha_instalacion_var, date_pattern='dd-mm-yyyy')
-        self.fecha_instalacion_entry.grid(row=3, column=1, padx=5, pady=5)
+        self.fecha_instalacion_mov_var = tk.StringVar()
+        self.fecha_instalacion_mov_entry = DateEntry(form_frame, textvariable=self.fecha_instalacion_mov_var, date_pattern='dd-mm-yyyy')
+        self.fecha_instalacion_mov_entry.grid(row=3, column=1, padx=5, pady=5)
 
         ttk.Label(form_frame, text="Fecha de Término:").grid(row=4, column=0, padx=5, pady=5)
-        self.fecha_termino_var = tk.StringVar()
-        self.fecha_termino_entry = DateEntry(form_frame, textvariable=self.fecha_termino_var, date_pattern='dd-mm-yyyy')
-        self.fecha_termino_entry.grid(row=4, column=1, padx=5, pady=5)
+        self.fecha_termino_mov_var = tk.StringVar()
+        self.fecha_termino_mov_entry = DateEntry(form_frame, textvariable=self.fecha_termino_mov_var, date_pattern='dd-mm-yyyy')
+        self.fecha_termino_mov_entry.grid(row=4, column=1, padx=5, pady=5)
 
         add_button = ttk.Button(form_frame, text="Agregar", command=self.add_historico_movimientos)
         add_button.grid(row=5, column=0, columnspan=2, pady=10)
@@ -582,30 +641,70 @@ class App(tk.Tk):
         codigo_naval = self.codigo_naval_historico_var.get().strip()
         id_centro_anterior = self.id_centro_anterior_var.get().strip()
         id_centro_nuevo = self.id_centro_nuevo_var.get().strip()
-        fecha_instalacion = self.fecha_instalacion_var.get().strip()
-        fecha_termino = self.fecha_termino_var.get().strip()
+        fecha_instalacion_mov = self.fecha_instalacion_mov_var.get().strip()
+        fecha_termino_mov = self.fecha_termino_mov_var.get().strip()
 
-        if codigo_naval and id_centro_anterior and id_centro_nuevo and fecha_instalacion and fecha_termino:
-            self.data_manager.insert_historico_movimientos(codigo_naval, id_centro_anterior, id_centro_nuevo, fecha_instalacion, fecha_termino)
+        if not codigo_naval or not id_centro_anterior or not id_centro_nuevo or not fecha_instalacion_mov:
+            messagebox.showerror("Error", "Todos los campos son obligatorios")
+            return
+
+        confirm = messagebox.askyesno("Confirmar", "¿Está seguro que desea insertar un histórico de movimiento? Esto provocará que se actualice la ubicación del pontón seleccionado.")
+        if not confirm:
+            return
+
+        try:
+            self.data_manager.insert_historico_movimientos(codigo_naval, id_centro_anterior, id_centro_nuevo, fecha_instalacion_mov, fecha_termino_mov)
             self.refresh_historico_movimientos_list()
             self.refresh_dispositivo_list()
             self.refresh_ponton_list()
             self.refresh_nombre_centro_ponton_combobox()
-        else:
-            messagebox.showerror("Error", "Todos los campos son obligatorios")
+            self.clear_historico_movimientos_fields()
+            messagebox.showinfo("Éxito", "Histórico de movimientos insertado correctamente")
+        except ValueError as ve:
+            messagebox.showerror("Error", str(ve))
+        except Exception as e:
+            messagebox.showerror("Error", f"Error al insertar histórico de movimientos: {e}")
+
+    def clear_historico_movimientos_fields(self):
+        self.codigo_naval_historico_var.set('')
+        self.id_centro_anterior_var.set('')
+        self.id_centro_nuevo_var.set('')
+        self.fecha_instalacion_mov_var.set('')
+        self.fecha_termino_mov_var.set('')
+    
+    def clear_dispositivo_fields(self):
+        self.serial_dispositivo_entry.delete(0, tk.END)
+        self.direccionamiento_ip_entry.delete(0, tk.END)
+        self.firmware_version_entry.delete(0, tk.END)
+        self.usuario_entry.delete(0, tk.END)
+        self.contrasena_entry.delete(0, tk.END)
+        self.tipo_dispositivo_combobox.set('')
+        self.codigo_naval_dispositivo_combobox.set('')
+
+    def clear_ponton_fields(self):
+        self.codigo_naval_var.set('')
+        self.nombre_centro_ponton_var.set('')
+        self.estado_var.set('')
+        self.ia_var.set('')
+        self.observaciones_var.set('')
+    
+    def clear_ubicacion_fields(self):
+        self.nombre_centro_var.set('')
+        self.grupo_telegram_var.set('')
+        self.nombre_empresa_var.set('')
+    
+    def clear_empresa_fields(self):
+        self.nombre_empresa_var.set('')
 
     def refresh_historico_movimientos_list(self):
         for item in self.historico_movimientos_tree.get_children():
             self.historico_movimientos_tree.delete(item)
         movimientos = self.data_manager.consultar_historico_movimientos()
         for movimiento in movimientos:
-            codigo_naval = movimiento[0]
-            centro_anterior = movimiento[1]
-            centro_nuevo = movimiento[2]
-            fecha_instalacion = movimiento[3].strftime("%d-%m-%Y") if movimiento[3] else "N/A"
-            fecha_termino = movimiento[4].strftime("%d-%m-%Y") if movimiento[4] else "N/A"
-            self.historico_movimientos_tree.insert("", "end", values=(codigo_naval, centro_anterior, centro_nuevo, fecha_instalacion, fecha_termino))
-            
+            fecha_instalacion_mov = movimiento[3].strftime("%d-%m-%Y") if movimiento[3] else "N/A"
+            fecha_termino_mov = movimiento[4].strftime("%d-%m-%Y") if movimiento[4] else "N/A"
+            self.historico_movimientos_tree.insert("", "end", values=(movimiento[0], movimiento[1], movimiento[2], fecha_instalacion_mov, fecha_termino_mov))
+        
     def create_tab_historico_dispositivos(self):
         tab = ttk.Frame(self.notebook)
         self.notebook.add(tab, text="Histórico Dispositivos")
@@ -629,16 +728,17 @@ class App(tk.Tk):
         self.codigo_naval_nuevo_var = tk.StringVar()
         self.codigo_naval_nuevo_combobox = ttk.Combobox(form_frame, textvariable=self.codigo_naval_nuevo_var)
         self.codigo_naval_nuevo_combobox.grid(row=2, column=1, padx=5, pady=5)
+        self.refresh_codigo_naval_nuevo_combobox()
 
         ttk.Label(form_frame, text="Fecha de Instalación:").grid(row=3, column=0, padx=5, pady=5)
-        self.fecha_instalacion_var = tk.StringVar()
-        self.fecha_instalacion_entry = DateEntry(form_frame, textvariable=self.fecha_instalacion_var, date_pattern='dd-mm-yyyy')
-        self.fecha_instalacion_entry.grid(row=3, column=1, padx=5, pady=5)
+        self.fecha_instalacion_disp_var = tk.StringVar()
+        self.fecha_instalacion_disp_entry = DateEntry(form_frame, textvariable=self.fecha_instalacion_disp_var, date_pattern='dd-mm-yyyy')
+        self.fecha_instalacion_disp_entry.grid(row=3, column=1, padx=5, pady=5)
 
         ttk.Label(form_frame, text="Fecha de Término:").grid(row=4, column=0, padx=5, pady=5)
-        self.fecha_termino_var = tk.StringVar()
-        self.fecha_termino_entry = DateEntry(form_frame, textvariable=self.fecha_termino_var, date_pattern='dd-mm-yyyy')
-        self.fecha_termino_entry.grid(row=4, column=1, padx=5, pady=5)
+        self.fecha_termino_disp_var = tk.StringVar()
+        self.fecha_termino_disp_entry = DateEntry(form_frame, textvariable=self.fecha_termino_disp_var, date_pattern='dd-mm-yyyy')
+        self.fecha_termino_disp_entry.grid(row=4, column=1, padx=5, pady=5)
 
         add_button = ttk.Button(form_frame, text="Agregar", command=self.add_historico_dispositivos)
         add_button.grid(row=5, column=0, columnspan=2, pady=10)
@@ -691,24 +791,12 @@ class App(tk.Tk):
     def refresh_historico_dispositivos_list(self):
         for item in self.historico_dispositivos_tree.get_children():
             self.historico_dispositivos_tree.delete(item)
-        historico_dispositivos = self.data_manager.consultar_historico_dispositivos()
-        for dispositivo in historico_dispositivos:
-            fecha_instalacion = dispositivo[3]
-            fecha_termino = dispositivo[4]
-            if isinstance(fecha_instalacion, str):
-                try:
-                    fecha_instalacion = datetime.strptime(fecha_instalacion, "%Y-%m-%d")
-                except ValueError:
-                    fecha_instalacion = None
-            if isinstance(fecha_termino, str):
-                try:
-                    fecha_termino = datetime.strptime(fecha_termino, "%Y-%m-%d")
-                except ValueError:
-                    fecha_termino = None
-            fecha_instalacion_str = fecha_instalacion.strftime("%d-%m-%Y") if fecha_instalacion else "N/A"
-            fecha_termino_str = fecha_termino.strftime("%d-%m-%Y") if fecha_termino else "N/A"
-            self.historico_dispositivos_tree.insert("", "end", values=(dispositivo[0], dispositivo[1], dispositivo[2], fecha_instalacion_str, fecha_termino_str))
-
+        dispositivos = self.data_manager.consultar_historico_dispositivos()
+        for dispositivo in dispositivos:
+            fecha_instalacion_disp = dispositivo[3].strftime("%d-%m-%Y") if dispositivo[3] else "N/A"
+            fecha_termino_disp = dispositivo[4].strftime("%d-%m-%Y") if dispositivo[4] else "N/A"
+            self.historico_dispositivos_tree.insert("", "end", values=(dispositivo[0], dispositivo[1], dispositivo[2], fecha_instalacion_disp, fecha_termino_disp))
+            
     def refresh_serial_dispositivo_combobox(self):
         dispositivos = self.data_manager.consultar_dispositivos()
         seriales = [dispositivo[0] for dispositivo in dispositivos]
@@ -735,12 +823,33 @@ class App(tk.Tk):
         serial = self.serial_dispositivo_var.get().strip()
         codigo_naval_anterior = self.codigo_naval_anterior_var.get().strip()
         codigo_naval_nuevo = self.codigo_naval_nuevo_var.get().strip()
-        fecha_instalacion = self.fecha_instalacion_var.get().strip()
-        fecha_termino = self.fecha_termino_var.get().strip()
+        fecha_instalacion_disp = self.fecha_instalacion_disp_var.get().strip()
+        fecha_termino_disp = self.fecha_termino_disp_var.get().strip()
 
-        if serial and codigo_naval_anterior and codigo_naval_nuevo and fecha_instalacion and fecha_termino:
-            self.data_manager.insert_historico_dispositivos(serial, codigo_naval_anterior, codigo_naval_nuevo, fecha_instalacion, fecha_termino)
+        if not serial or not codigo_naval_anterior or not codigo_naval_nuevo or not fecha_instalacion_disp:
+            messagebox.showerror("Error", "Todos los campos son obligatorios")
+            return
+
+        confirm = messagebox.askyesno("Confirmar", "¿Está seguro que desea insertar un histórico de dispositivo? Esto provocará que se actualice la ubicación del dispositivo seleccionado.")
+        if not confirm:
+            return
+
+        try:
+            self.data_manager.insert_historico_dispositivos(serial, codigo_naval_anterior, codigo_naval_nuevo, fecha_instalacion_disp, fecha_termino_disp)
             self.refresh_historico_dispositivos_list()
             self.refresh_dispositivo_list()
-        else:
-            messagebox.showerror("Error", "Todos los campos son obligatorios")
+            self.clear_historico_dispositivos_fields()
+            messagebox.showinfo("Éxito", "Histórico de dispositivos insertado correctamente")
+        except ValueError as ve:
+            messagebox.showerror("Error", str(ve))
+        except Exception as e:
+            messagebox.showerror("Error", f"Error al insertar histórico de dispositivos: {e}")
+
+    def clear_historico_dispositivos_fields(self):
+        self.serial_dispositivo_var.set('')
+        self.codigo_naval_anterior_var.set('')
+        self.codigo_naval_nuevo_var.set('')
+        self.fecha_instalacion_disp_var.set('')
+        self.fecha_termino_disp_var.set('')
+
+
